@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RealIQ Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--paper); }
+    .dashboard-shell {
+      max-width: 1100px; margin: 60px auto; padding: 0 24px 80px;
+    }
+    .dashboard-topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--navy-950); color: var(--white); border-radius: 12px;
+      padding: 20px 28px; margin-bottom: 26px;
+    }
+    .welcome { font-size: 28px; font-family: 'Fraunces', serif; }
+    .logout-btn {
+      background: var(--brass); color: var(--navy-950); border: none; border-radius: 6px;
+      font-weight: 700; padding: 12px 18px; cursor: pointer;
+    }
+    .dashboard-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px;
+    }
+    .panel {
+      background: var(--white); border: 1px solid var(--line); border-radius: 12px;
+      padding: 26px;
+      box-shadow: 0 12px 26px rgba(16,24,38,0.06);
+    }
+    .panel h3 {
+      font-size: 22px; margin-bottom: 14px;
+    }
+    .status-pill {
+      display: inline-block; background: #ebf8f0; color: var(--emerald);
+      border-radius: 999px; padding: 6px 12px; font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 14px;
+    }
+    .meta-list { list-style: none; color: var(--slate); }
+    .meta-list li { margin: 10px 0; }
+    .muted { color: var(--slate); }
+  </style>
+</head>
+<body>
+  <div class="dashboard-shell">
+    <div class="dashboard-topbar">
+      <div>
+        <div class="logo" style="color:var(--white);"><span class="mark">π</span>RealIQ</div>
+      </div>
+      <div class="welcome">Welcome <span id="userName">User</span></div>
+      <button class="logout-btn" id="logoutBtn" type="button">Logout</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="panel">
+        <div class="status-pill">Online</div>
+        <h3>Profile</h3>
+        <ul class="meta-list">
+          <li><strong>Name:</strong> <span id="profileName">-</span></li>
+          <li><strong>Email:</strong> <span id="profileEmail">-</span></li>
+          <li><strong>Role:</strong> <span id="profileRole">-</span></li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="status-pill">Live</div>
+        <h3>Inventory</h3>
+        <p class="muted">Recent property matches and RERA-verified listings are available for your assigned role.</p>
+      </div>
+
+      <div class="panel">
+        <div class="status-pill">Action</div>
+        <h3>Quick links</h3>
+        <ul class="meta-list">
+          <li>Search listings</li>
+          <li>Manage leads</li>
+          <li>Review approvals</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadSession() {
+      const res = await fetch('/api/session');
+      if (!res.ok) {
+        window.location.href = '/index.html#login';
+        return;
+      }
+
+      const data = await res.json();
+      const user = data.user || {};
+      document.getElementById('userName').textContent = user.fullName || 'User';
+      document.getElementById('profileName').textContent = user.fullName || 'User';
+      document.getElementById('profileEmail').textContent = user.email || '-';
+      document.getElementById('profileRole').textContent = user.role || '-';
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/index.html#login';
+    });
+
+    loadSession();
+  </script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RealIQ — Real Estate, Structured</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo"><span class="mark">π</span>RealIQ</div>
+    <nav class="links">
+      <a href="#listings">Buy</a>
+      <a href="#roles">Developers</a>
+      <a href="#roles">Channel Partners</a>
+      <a href="#stats">New Launches</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="#login">Log in</a>
+      <a class="btn btn-brass" href="register.html">Register</a>
+      <button class="btn btn-ghost" id="logoutTopBtn" type="button" style="display:none;">Logout</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero" style="padding-top:80px;">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">Centralized real-estate platform</div>
+      <h1>Property search, <em>read structurally.</em></h1>
+      <p class="lede">One system for buyers, channel partners, developers — live inventory, natural-language search, and role-based control from a single source of truth.</p>
+
+      <div class="search-card">
+        <div class="search-tabs">
+          <div class="search-tab active">AI Search</div>
+          <div class="search-tab">Traditional Filters</div>
+        </div>
+        <form id="searchForm" class="search-row" autocomplete="off">
+          <input id="searchInput" type="text" placeholder="" autocomplete="off" />
+          <button type="submit" id="searchBtn">Search</button>
+        </form>
+        <div class="parse-strip" id="parseStrip"></div>
+      </div>
+
+      <div class="hero-stats">
+        <div><div class="num">18,400+</div><div class="lbl">Live units tracked</div></div>
+        <div><div class="num">640</div><div class="lbl">Verified developers</div></div>
+        <div><div class="num">92%</div><div class="lbl">Query match accuracy</div></div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <img src="images/hero-building.jpg" alt="Modern apartment tower exterior" />
+      <div class="hero-float">
+        <div class="lbl">Median ticket size</div>
+        <div class="val">₹1.86 Cr</div>
+        <div class="sub">▲ RERA-verified inventory</div>
+      </div>
+      <div class="hero-tag">
+        <div>
+          <div class="t1">Meridian Heights, New Town</div>
+          <div class="t2">3 BHK · 1,420 sq.ft · Tower B</div>
+        </div>
+        <div class="badge-verified">RERA VERIFIED</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-bottom-space"></div>
+</section>
+
+<section id="roles">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">One schema, three vantage points</div>
+      <h2>Built for every seat at the closing table.</h2>
+      <p>Each role sees the same live inventory through permissions built for how they actually work — not a shared dashboard with things hidden.</p>
+    </div>
+    
+    <!-- Added inline style to force 3 equal columns -->
+    <div class="role-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="role-card">
+        <span class="role-tag">Buyer</span>
+        <h3>Search &amp; shortlist</h3>
+        <ul>
+          <li>View floor plans &amp; pricing</li>
+          <li>Save favourite units</li>
+          <li>Schedule a site visit</li>
+          <li>Track enquiry status</li>
+        </ul>
+      </div>
+      
+      <div class="role-card">
+        <span class="role-tag">Channel Partner</span>
+        <h3>Sell &amp; earn</h3>
+        <ul>
+          <li>Access permitted inventory</li>
+          <li>Register &amp; manage leads</li>
+          <li>Track pending commission</li>
+          <li>Payment-plan calculator</li>
+        </ul>
+      </div>
+      
+      <div class="role-card">
+        <span class="role-tag">Developer</span>
+        <h3>List &amp; control</h3>
+        <ul>
+          <li>Manage projects &amp; units</li>
+          <li>Configure pricing plans</li>
+          <li>Approve CP leads</li>
+          <li>Project-level analytics</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="listings" style="background:var(--white); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="listings-head">
+      <div class="section-head" style="margin-bottom:0;">
+        <div class="eyebrow">Live inventory</div>
+        <h2>Currently on the market</h2>
+      </div>
+      <a class="btn btn-outline-dark" href="#login">View all inventory</a>
+    </div>
+    <div class="listing-grid">
+      <div class="listing-card">
+        <div class="listing-img">
+          <img src="images/listing-1-curved-balcony.jpg" alt="Curved balcony apartment tower" />
+          <div class="listing-status">Ready to move</div>
+        </div>
+        <div class="listing-body">
+          <div class="listing-price">₹1.92 Cr</div>
+          <div class="listing-loc">Meridian Heights — New Town, East Kolkata</div>
+          <div class="listing-meta">
+            <span><b>3</b> BHK</span>
+            <span><b>1,420</b> sq.ft</span>
+            <span><b>E</b>-facing</span>
+          </div>
+        </div>
+      </div>
+      <div class="listing-card">
+        <div class="listing-img">
+          <img src="images/listing-2-trees-sky.jpg" alt="Apartment building with landscaped grounds" />
+          <div class="listing-status">Under construction</div>
+        </div>
+        <div class="listing-body">
+          <div class="listing-price">₹3.4 Cr</div>
+          <div class="listing-loc">Orchid Residences — Rajarhat</div>
+          <div class="listing-meta">
+            <span><b>4</b> BHK</span>
+            <span><b>2,180</b> sq.ft</span>
+            <span><b>N</b>-facing</span>
+          </div>
+        </div>
+      </div>
+      <div class="listing-card">
+        <div class="listing-img">
+          <img src="images/hero-building.jpg" alt="Modern white apartment facade" />
+          <div class="listing-status">New launch</div>
+        </div>
+        <div class="listing-body">
+          <div class="listing-price">₹94 L</div>
+          <div class="listing-loc">Birchwood Court — EM Bypass</div>
+          <div class="listing-meta">
+            <span><b>2</b> BHK</span>
+            <span><b>980</b> sq.ft</span>
+            <span><b>S</b>-facing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stats-band" id="stats">
+  <img class="bg-img" src="images/skyline-dusk.jpg" alt="City skyline at dusk" />
+  <div class="wrap stats-inner">
+    <h2>A single ledger, from first search to final registration.</h2>
+    <div class="stat-row">
+      <div><div class="num">140+</div><div class="lbl">Cities covered</div></div>
+      <div><div class="num">18.4K</div><div class="lbl">Units live</div></div>
+      <div><div class="num">3,200</div><div class="lbl">Active channel partners</div></div>
+      <div><div class="num">₹9,600 Cr</div><div class="lbl">Bookings tracked</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="login-section" id="login">
+  <div class="login-grid">
+    <div class="login-visual">
+      <img src="images/login-lounge.jpg" alt="Luxury modern interior lounge" />
+      <div class="overlay">
+        <blockquote>"Every enquiry, site visit, and booking — visible the moment it happens."</blockquote>
+        <div class="attribution">— Built for teams managing live inventory at scale</div>
+      </div>
+    </div>
+
+    <div class="login-form-wrap">
+      <div class="login-form">
+        <div class="eyebrow">Welcome back</div>
+        <h2>Log in to RealIQ</h2>
+        <p>Select your role — your dashboard adjusts automatically.</p>
+
+        <div class="role-switch" id="roleSwitch">
+          <button class="active" data-role="Buyer">Buyer</button>
+          <button data-role="Channel Partner">CP</button>
+          <button data-role="Developer">Developer</button>
+          <button data-role="Admin">Admin</button>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <div class="field">
+            <label for="email">Email or phone</label>
+            <input id="email" type="text" placeholder="you@company.com" required autocomplete="off" name="login-email-manual" />
+          </div>
+          <div class="field">
+            <label for="pass">Password</label>
+            <input id="pass" type="password" placeholder="••••••••••" required autocomplete="new-password" name="login-password-manual" />
+          </div>
+          <div class="form-row-between">
+            <label><input type="checkbox" /> Keep me signed in</label>
+            <a href="forgot-password.html">Forgot password?</a>
+          </div>
+          <button class="submit-btn" type="submit" id="submitBtn">Continue as Buyer</button>
+          <div class="form-msg" id="formMsg"></div>
+        </form>
+
+        <div class="divider">or continue with</div>
+        <div class="alt-login">
+          <button type="button">Google</button>
+          <button type="button">OTP on Mobile</button>
+        </div>
+
+        <div class="signup-note">New to RealIQ? <a href="register.html">Create an account</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="color:var(--white);"><span class="mark">π</span>RealIQ</div>
+        <p class="desc">A centralized platform for buyers, channel partners, developers — one inventory, three ways to work with it.</p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="#">AI Search</a></li>
+          <li><a href="#">For Developers</a></li>
+          <li><a href="#">For Channel Partners</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">RERA Disclosures</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 RealIQ Technologies</span>
+      <span>MULTI-ROLE · RBAC · REAL-TIME INVENTORY</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ============================================================
+     AI SEARCH — fixed behavior:
+     - While the box is EMPTY and NOT focused, it rotates example
+       queries through the placeholder only (never touches value).
+     - The moment the user focuses or types, rotation stops dead
+       and never comes back until the box is empty + blurred again.
+     - Whatever the user types gets parsed live into filter tokens.
+     ============================================================ */
+
+  const exampleQueries = [
+    "3 BHK under ₹2 Cr in New Town, East Kolkata, possession within 2 years",
+    "Ready-to-move luxury apartment under 5 crore",
+    "East-facing 4 BHK with balcony near the airport",
+    "2 BHK under 80 lakh in Rajarhat"
+  ];
+
+  const knownLocations = [
+    "new town","east kolkata","rajarhat","salt lake","em bypass",
+    "garia","behala","dum dum","howrah","tollygunge","ballygunge"
+  ];
+  const amenitiesList = ["balcony","parking","gym","swimming pool","clubhouse","garden","lift","power backup","security"];
+  const propertyTypes = ["apartment","villa","plot","studio","penthouse","flat","house"];
+
+  function toTitle(s){ return s.replace(/\b\w/g, c => c.toUpperCase()); }
+
+  function parseQuery(raw){
+    const text = raw || "";
+    const lower = text.toLowerCase();
+    const tokens = [];
+
+    const bhk = lower.match(/(\d+)\s*bhk/);
+    if (bhk) tokens.push(["bedrooms", bhk[1]]);
+
+    for (const t of propertyTypes) {
+      if (lower.includes(t)) { tokens.push(["property_type", t === "flat" ? "apartment" : t]); break; }
+    }
+
+    let m = lower.match(/(?:under|below|within|less than)\s*₹?\s*([\d.]+)\s*(cr|crore)/);
+    if (m) tokens.push(["max_budget", `₹${parseFloat(m[1])} Cr`]);
+    else {
+      m = lower.match(/(?:under|below|within|less than)\s*₹?\s*([\d.]+)\s*(l|lakh|lac)\b/);
+      if (m) tokens.push(["max_budget", `₹${parseFloat(m[1])} L`]);
+    }
+
+    m = lower.match(/(north|south|east|west)[\s-]?facing/);
+    if (m) tokens.push(["facing", m[1]]);
+
+    m = lower.match(/possession(?:\s*within)?\s*(\d+)\s*(year|yr)/);
+    if (m) tokens.push(["possession", `≤ ${m[1]} yrs`]);
+
+    if (lower.includes("ready to move") || lower.includes("ready-to-move")) tokens.push(["construction_status", "ready_to_move"]);
+    else if (lower.includes("under construction")) tokens.push(["construction_status", "under_construction"]);
+    else if (lower.includes("new launch")) tokens.push(["construction_status", "new_launch"]);
+
+    if (lower.includes("luxury")) tokens.push(["tier", "luxury"]);
+
+    let loc = knownLocations.find(l => lower.includes(l));
+    if (loc) {
+      tokens.push(["location", toTitle(loc)]);
+    } else {
+      m = text.match(/(?:in|near)\s+([A-Z][A-Za-z\s]{2,25})/);
+      if (m) tokens.push(["location", m[1].trim()]);
+    }
+
+    const foundAmenities = amenitiesList.filter(a => lower.includes(a));
+    if (foundAmenities.length) tokens.push(["amenities", foundAmenities.join(", ")]);
+
+    m = lower.match(/near\s+(airport|metro|school|hospital|mall)/);
+    if (m) tokens.push(["proximity", m[1]]);
+
+    return tokens;
+  }
+
+  const input   = document.getElementById('searchInput');
+  const strip   = document.getElementById('parseStrip');
+  const searchBtn = document.getElementById('searchBtn');
+  const searchForm = document.getElementById('searchForm');
+
+  let cycleTimer = null;
+  let cycleIndex = 0;
+
+  function renderTokens(tokens, emptyHint){
+    if (!tokens.length) {
+      strip.innerHTML = `<span class="arrow">→</span><span class="hint">${emptyHint}</span>`;
+      return;
+    }
+    strip.innerHTML = '<span class="arrow">→</span>' + tokens.map(
+      ([k, v]) => `<span class="token">${k}<b> = </b>${v}</span>`
+    ).join('');
+  }
+
+  function showPlaceholderFrame(){
+    const q = exampleQueries[cycleIndex];
+    input.setAttribute('placeholder', q);
+    renderTokens(parseQuery(q), "Example — click the box and type your own search");
+    cycleIndex = (cycleIndex + 1) % exampleQueries.length;
+  }
+
+  function startCycle(){
+    if (cycleTimer) return;
+    showPlaceholderFrame();
+    cycleTimer = setInterval(showPlaceholderFrame, 4200);
+  }
+
+  function stopCycle(){
+    clearInterval(cycleTimer);
+    cycleTimer = null;
+  }
+
+  function reactToUserInput(){
+    stopCycle();
+    const tokens = parseQuery(input.value);
+    renderTokens(tokens, "Keep typing — bedrooms, budget, location, facing…");
+  }
+
+  input.addEventListener('focus', reactToUserInput);
+  input.addEventListener('input', reactToUserInput);
+  input.addEventListener('blur', () => {
+    if (!input.value.trim()) startCycle();
+  });
+
+  function runSearch(){
+    stopCycle();
+    const tokens = parseQuery(input.value);
+    renderTokens(tokens, "Type a search above — e.g. bedrooms, budget, location");
+    document.getElementById('listings').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  searchBtn.addEventListener('click', runSearch);
+  searchForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    runSearch();
+  });
+
+  startCycle();
+
+  async function checkSession() {
+    try {
+      const response = await fetch('/api/session');
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.authenticated) return;
+
+      const logoutBtn = document.getElementById('logoutTopBtn');
+      const loginLink = document.querySelector('.nav-cta .btn-ghost');
+      const registerLink = document.querySelector('.nav-cta .btn-brass');
+
+      if (logoutBtn) {
+        logoutBtn.style.display = 'inline-block';
+        logoutBtn.addEventListener('click', async () => {
+          await fetch('/api/logout', { method: 'POST' });
+          window.location.href = '/index.html#login';
+        });
+      }
+
+      if (loginLink) loginLink.style.display = 'none';
+      if (registerLink) {
+        registerLink.textContent = 'Dashboard';
+        registerLink.setAttribute('href', '/dashboard');
+      }
+    } catch (error) {
+      console.error('Session check failed:', error);
+    }
+  }
+
+  const roleButtons = document.querySelectorAll('#roleSwitch button');
+  const submitBtn = document.getElementById('submitBtn');
+  roleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      roleButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      submitBtn.textContent = 'Continue as ' + btn.dataset.role;
+    });
+  });
+
+  const form = document.getElementById('loginForm');
+  const msg = document.getElementById('formMsg');
+  const loginEmailInput = document.getElementById('email');
+  const loginPasswordInput = document.getElementById('pass');
+
+  loginEmailInput.value = '';
+  loginPasswordInput.value = '';
+  loginEmailInput.setAttribute('autocomplete', 'off');
+  loginPasswordInput.setAttribute('autocomplete', 'new-password');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const identifier = loginEmailInput.value.trim();
+    const password = loginPasswordInput.value;
+    const role = document.querySelector('#roleSwitch button.active').dataset.role;
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password, role })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        loginEmailInput.value = '';
+        loginPasswordInput.value = '';
+        loginEmailInput.focus();
+
+        msg.style.display = 'block';
+        msg.style.background = '#fbeaea';
+        msg.style.color = '#a13636';
+        msg.style.borderColor = '#f0c9c9';
+        msg.textContent = '✕ ' + (data.message || 'Invalid credentials. Please try again.');
+        return;
+      }
+
+      msg.style.display = 'block';
+      msg.style.background = '#eef6f1';
+      msg.style.color = 'var(--emerald)';
+      msg.style.borderColor = '#cfe6da';
+      msg.textContent = `✓ Welcome back, ${data.user.fullName || data.user.email}. Redirecting to dashboard…`;
+
+      setTimeout(() => {
+        window.location.href = data.redirect || '/dashboard';
+      }, 800);
+    } catch (error) {
+      loginEmailInput.value = '';
+      loginPasswordInput.value = '';
+      loginEmailInput.focus();
+
+      msg.style.display = 'block';
+      msg.style.background = '#fbeaea';
+      msg.style.color = '#a13636';
+      msg.style.borderColor = '#f0c9c9';
+      msg.textContent = '✕ Unable to reach the server. Please try again later.';
+    }
+  });
+
+  checkSession();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create your RealIQ account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo"><span class="mark">π</span>RealIQ</div>
+    <nav class="links">
+      <a href="index.html#listings">Buy</a>
+      <a href="index.html#roles">Platform</a>
+      <a href="index.html#roles">Developers</a>
+      <a href="index.html#roles">Channel Partners</a>
+      <a href="index.html#stats">New Launches</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="index.html#login">Log in</a>
+      <a class="btn btn-brass" href="register.html">Register</a>
+    </div>
+  </div>
+</header>
+
+<section class="register-section">
+  <div class="wrap">
+    <div class="register-wrap">
+      <div class="eyebrow">Get started</div>
+      <h2>Create your account</h2>
+      <p class="sub">Choose how you'll use RealIQ — every role gets its own dashboard from day one.</p>
+
+      <div class="role-select-grid" id="roleSelectGrid">
+        <div class="role-select-card active" data-role="buyer">
+          <div class="rsc-title">Buyer</div>
+          <div class="rsc-sub">Search &amp; Book</div>
+        </div>
+        <div class="role-select-card" data-role="cp">
+          <div class="rsc-title">Channel Partner</div>
+          <div class="rsc-sub">Sell &amp; Earn</div>
+        </div>
+        <div class="role-select-card" data-role="developer">
+          <div class="rsc-title">Developer</div>
+          <div class="rsc-sub">List &amp; Manage</div>
+        </div>
+        <div class="role-select-card" data-role="admin">
+          <div class="rsc-title">Admin</div>
+          <div class="rsc-sub">Govern</div>
+        </div>
+      </div>
+
+      <form id="registerForm" autocomplete="off" spellcheck="false">
+
+        <div class="form-2col">
+          <div class="field">
+            <label for="fullName">Full name</label>
+            <input id="fullName" type="text" name="realiq_full_name_manual" placeholder="Ananya Sharma" required autocomplete="off" autocapitalize="words" />
+          </div>
+          <div class="field">
+            <label for="phone">Phone number</label>
+            <input id="phone" type="tel" name="realiq_phone_manual" placeholder="+91 98765 43210" required autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="regEmail">Email address</label>
+          <input id="regEmail" type="email" name="realiq_email_manual" placeholder="you@company.com" required autocomplete="off" />
+        </div>
+
+        <div class="form-2col">
+          <div class="field">
+            <label for="regPass">Password</label>
+            <input id="regPass" type="password" name="realiq_password_manual" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label for="confirmPass">Confirm password</label>
+            <input id="confirmPass" type="password" name="realiq_confirm_password_manual" placeholder="Re-enter password" required minlength="8" autocomplete="new-password" />
+          </div>
+        </div>
+
+        <!-- BUYER: no extra fields, block hidden -->
+        <div class="role-fields" id="fields-buyer" style="display:none;">
+          <span class="rf-label">Buyer preferences (optional)</span>
+          <div class="form-2col">
+            <div class="field">
+              <label for="buyerCity">Preferred city</label>
+              <input id="buyerCity" type="text" placeholder="Kolkata" />
+            </div>
+            <div class="field">
+              <label for="buyerBudget">Budget range</label>
+              <input id="buyerBudget" type="text" placeholder="e.g. ₹80L – ₹2 Cr" />
+            </div>
+          </div>
+        </div>
+
+        <!-- CHANNEL PARTNER -->
+        <div class="role-fields" id="fields-cp" style="display:none;">
+          <span class="rf-label">Channel partner / broker details</span>
+          <div class="form-2col">
+            <div class="field">
+              <label for="cpCompany">Company / agency name</label>
+              <input id="cpCompany" type="text" placeholder="Sharma Realty Associates" />
+            </div>
+            <div class="field">
+              <label for="cpRera">RERA registration number</label>
+              <input id="cpRera" type="text" placeholder="WB/RERA/A/2026/00123" />
+            </div>
+          </div>
+          <div class="field" style="margin-top:4px;">
+            <label for="cpExp">Years in real estate</label>
+            <input id="cpExp" type="number" min="0" placeholder="e.g. 4" />
+          </div>
+        </div>
+
+        <!-- DEVELOPER -->
+        <div class="role-fields" id="fields-developer" style="display:none;">
+          <span class="rf-label">Developer / builder details</span>
+          <div class="form-2col">
+            <div class="field">
+              <label for="devCompany">Company name</label>
+              <input id="devCompany" type="text" placeholder="Meridian Developers Pvt. Ltd." />
+            </div>
+            <div class="field">
+              <label for="devRera">RERA registration number</label>
+              <input id="devRera" type="text" placeholder="WB/RERA/P/2026/00456" />
+            </div>
+          </div>
+          <div class="field" style="margin-top:4px;">
+            <label for="devGst">GST number</label>
+            <input id="devGst" type="text" placeholder="22AAAAA0000A1Z5" />
+          </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div class="role-fields" id="fields-admin" style="display:none;">
+          <span class="rf-label">Admin access</span>
+          <div class="field">
+            <label for="adminCode">Invite / access code</label>
+            <input id="adminCode" type="text" placeholder="Provided by your platform admin" />
+          </div>
+          <p style="font-size:12.5px; color:var(--slate); margin-top:4px;">Admin accounts require an invite code and manual approval before activation.</p>
+        </div>
+
+        <div class="terms-row">
+          <input type="checkbox" id="terms" required />
+          <label for="terms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>, and confirm the details above are accurate.</label>
+        </div>
+
+        <button class="submit-btn" type="submit" id="registerSubmit">Create Buyer account</button>
+        <div class="form-msg" id="registerMsg"></div>
+      </form>
+
+      <div class="signup-note">Already have an account? <a href="index.html#login">Log in</a></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="color:var(--white);"><span class="mark">π</span>RealIQ</div>
+        <p class="desc">A centralized platform for buyers, channel partners, developers — one inventory, three ways to work with it.</p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="index.html#roles">AI Search</a></li>
+          <li><a href="index.html#roles">For Developers</a></li>
+          <li><a href="index.html#roles">For Channel Partners</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">RERA Disclosures</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 RealIQ Technologies</span>
+      <span>MULTI-ROLE · RBAC · REAL-TIME INVENTORY</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const roleCards   = document.querySelectorAll('.role-select-card');
+  const roleFieldBlocks = {
+    buyer: document.getElementById('fields-buyer'),
+    cp: document.getElementById('fields-cp'),
+    developer: document.getElementById('fields-developer'),
+    admin: document.getElementById('fields-admin')
+  };
+  const submitBtn = document.getElementById('registerSubmit');
+  const roleLabels = { buyer: "Buyer", cp: "Channel Partner", developer: "Developer", admin: "Admin" };
+
+  function selectRole(role){
+    roleCards.forEach(c => c.classList.toggle('active', c.dataset.role === role));
+    Object.entries(roleFieldBlocks).forEach(([key, el]) => {
+      el.style.display = key === role ? 'block' : 'none';
+    });
+    submitBtn.textContent = 'Create ' + roleLabels[role] + ' account';
+  }
+
+  roleCards.forEach(card => {
+    card.addEventListener('click', () => selectRole(card.dataset.role));
+  });
+
+  selectRole('buyer');
+
+  const form = document.getElementById('registerForm');
+  const msg  = document.getElementById('registerMsg');
+
+  form.reset();
+  Array.from(form.elements).forEach((field) => {
+    if (field && field.tagName === 'INPUT') field.value = '';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fullName = document.getElementById('fullName').value.trim();
+    const phone = document.getElementById('phone').value;
+    const email = document.getElementById('regEmail').value;
+    const pass = document.getElementById('regPass').value;
+    const confirm = document.getElementById('confirmPass').value;
+    const activeRole = document.querySelector('.role-select-card.active').dataset.role;
+
+    if (pass !== confirm) {
+      msg.style.display = 'block';
+      msg.style.background = '#fbeaea';
+      msg.style.color = '#a13636';
+      msg.style.borderColor = '#f0c9c9';
+      msg.textContent = '✕ Passwords do not match — please re-check.';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          phone,
+          email,
+          password: pass,
+          confirmPassword: confirm,
+          role: activeRole,
+          city: document.getElementById('buyerCity')?.value || '',
+          company: document.getElementById('cpCompany')?.value || document.getElementById('devCompany')?.value || ''
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        form.reset();
+        Array.from(form.elements).forEach((field) => {
+          if (field && field.tagName === 'INPUT') field.value = '';
+        });
+
+        msg.style.display = 'block';
+        msg.style.background = '#fbeaea';
+        msg.style.color = '#a13636';
+        msg.style.borderColor = '#f0c9c9';
+        msg.textContent = '✕ ' + (data.message || 'Registration failed. Please try again.');
+        return;
+      }
+
+      form.reset();
+      Array.from(form.elements).forEach((field) => {
+        if (field && field.tagName === 'INPUT') field.value = '';
+      });
+
+      msg.style.display = 'block';
+      msg.style.background = '#eef6f1';
+      msg.style.color = 'var(--emerald)';
+      msg.style.borderColor = '#cfe6da';
+      msg.textContent = `✓ Account created for ${roleLabels[activeRole]}. Redirecting to dashboard…`;
+
+      setTimeout(() => {
+        window.location.href = data.redirect || '/dashboard';
+      }, 1000);
+    } catch (error) {
+      form.reset();
+      Array.from(form.elements).forEach((field) => {
+        if (field && field.tagName === 'INPUT') field.value = '';
+      });
+
+      msg.style.display = 'block';
+      msg.style.background = '#fbeaea';
+      msg.style.color = '#a13636';
+      msg.style.borderColor = '#f0c9c9';
+      msg.textContent = '✕ Unable to contact the server. Please try again.';
+    }
+  });
+</script>
+
+</body>
+</html>
