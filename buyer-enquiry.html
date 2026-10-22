@@ -1,0 +1,253 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Share your details with RealIQ to enquire about property inventory.">
+  <title>Property Enquiry | RealIQ</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    .enquiry-section {
+      min-height: calc(100vh - 74px);
+      padding: 64px 24px 80px;
+    }
+
+    .enquiry-container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .enquiry-heading {
+      margin-bottom: 32px;
+    }
+
+    .enquiry-heading h1 {
+      font-size: clamp(2.2rem, 5vw, 3.3rem);
+      margin: 16px 0;
+    }
+
+    .enquiry-heading p {
+      color: var(--slate);
+      max-width: 580px;
+    }
+
+    .enquiry-card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 12px 35px rgba(16, 24, 38, 0.05);
+    }
+
+    .enquiry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .enquiry-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .enquiry-field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .enquiry-field label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .enquiry-field input,
+    .enquiry-field select {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px;
+      border: 1px solid rgba(16, 24, 38, 0.16);
+      border-radius: 3px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .enquiry-field input:focus,
+    .enquiry-field select:focus {
+      outline: 2px solid var(--brass);
+      outline-offset: 1px;
+    }
+
+    .enquiry-submit {
+      width: 100%;
+      min-height: 50px;
+      margin-top: 26px;
+      border: 0;
+      border-radius: 3px;
+      background: var(--navy-950);
+      color: var(--white);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .enquiry-submit:hover {
+      background: var(--navy-800);
+    }
+
+    .enquiry-note {
+      margin-top: 16px;
+      color: var(--slate);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .enquiry-section {
+        padding: 40px 16px 56px;
+      }
+
+      .enquiry-card {
+        padding: 22px 18px;
+      }
+
+      .enquiry-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .enquiry-field.full-width {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="nav">
+      <a class="logo" href="index.html">
+        <span class="mark">π</span>RealIQ
+      </a>
+
+      <nav class="links">
+        <a href="index.html#listings">Inventory</a>
+      </nav>
+
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="index.html">Back to home</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="enquiry-section">
+    <div class="enquiry-container">
+      <div class="enquiry-heading">
+        <div class="eyebrow">Property enquiry</div>
+        <h1>Find your next property.</h1>
+        <p>
+          Share a few basic details so the RealIQ team can understand
+          your enquiry and contact you about available properties.
+        </p>
+      </div>
+
+      <form class="enquiry-card" id="buyerEnquiryForm">
+        <div class="enquiry-grid">
+          <div class="enquiry-field full-width">
+            <label for="fullName">Full name *</label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              autocomplete="name"
+              maxlength="150"
+              placeholder="Enter your full name"
+              required
+            >
+          </div>
+
+          <div class="enquiry-field">
+            <label for="email">Email address *</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              maxlength="254"
+              placeholder="you@example.com"
+              required
+            >
+          </div>
+
+          <div class="enquiry-field">
+            <label for="phone">Phone number *</label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              maxlength="20"
+              placeholder="Enter your phone number"
+              required
+            >
+          </div>
+
+          <div class="enquiry-field">
+            <label for="city">City *</label>
+            <input
+              id="city"
+              name="city"
+              type="text"
+              autocomplete="address-level2"
+              maxlength="100"
+              placeholder="Enter your city"
+              required
+            >
+          </div>
+
+          <div class="enquiry-field">
+            <label for="state">State *</label>
+            <input
+              id="state"
+              name="state"
+              type="text"
+              autocomplete="address-level1"
+              maxlength="100"
+              placeholder="Enter your state"
+              required
+            >
+          </div>
+        </div>
+
+        <button class="enquiry-submit" type="submit">
+          Continue to inventory
+        </button>
+
+        <p class="enquiry-note">
+          Your details have not been submitted or saved by this demo form.
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    document
+      .getElementById('buyerEnquiryForm')
+      .addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        alert(
+          'The enquiry form is a visual prototype. ' +
+          'Submission will be enabled after the backend workflow is agreed.'
+        );
+      });
+  </script>
+</body>
+</html>
+```
