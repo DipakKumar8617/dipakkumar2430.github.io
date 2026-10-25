@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -231,8 +232,8 @@
 
         <div class="divider">or continue with</div>
         <div class="alt-login">
-          <button type="button">Google</button>
-          <button type="button">OTP on Mobile</button>
+          <div id="googleLoginBtn" role="button" tabindex="0"><button type="button">Continue with Google</button></div>
+          <button type="button" id="otpLoginBtn">OTP on Mobile</button>
         </div>
 
         <div class="signup-note">New to RealIQ? <a href="register.html">Create an account</a></div>
@@ -517,6 +518,111 @@
     }
   });
 
+  // Google Sign-In: Google verifies the account token on the backend.
+  const googleContainer = document.getElementById('googleLoginBtn');
+  const otpButton = document.getElementById('otpLoginBtn');
+
+  function showAuthMessage(message, success = false) {
+    msg.style.display = 'block';
+    msg.style.background = success ? '#eef6f1' : '#fbeaea';
+    msg.style.color = success ? 'var(--emerald)' : '#a13636';
+    msg.style.borderColor = success ? '#cfe6da' : '#f0c9c9';
+    msg.textContent = message;
+  }
+
+  async function postAuthJson(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || data.message || 'Authentication failed.');
+    }
+    return data;
+  }
+
+  async function handleGoogleCredential(response) {
+    try {
+      showAuthMessage('Verifying your Google account...', true);
+      const data = await postAuthJson('/api/auth/google', {
+        credential: response.credential
+      });
+      showAuthMessage('Google sign-in successful. Redirecting...', true);
+      window.location.href = data.redirect || '/dashboard';
+    } catch (error) {
+      showAuthMessage(error.message || 'Google sign-in failed.');
+    }
+  }
+
+  async function initializeGoogleSignIn() {
+    try {
+      const configResponse = await fetch('/api/auth/config');
+      if (!configResponse.ok) throw new Error('Could not load Google sign-in configuration.');
+
+      const config = await configResponse.json();
+      if (!config.google_client_id) {
+        googleContainer.textContent = 'Google Sign-In needs a configured Client ID.';
+        return;
+      }
+
+      const waitForGoogle = () => {
+        if (!window.google?.accounts?.id) {
+          setTimeout(waitForGoogle, 150);
+          return;
+        }
+
+        window.google.accounts.id.initialize({
+          client_id: config.google_client_id,
+          callback: handleGoogleCredential
+        });
+
+        googleContainer.replaceChildren();
+        window.google.accounts.id.renderButton(googleContainer, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          width: 240
+        });
+      };
+
+      waitForGoogle();
+    } catch (error) {
+      showAuthMessage(error.message || 'Unable to initialize Google sign-in.');
+    }
+  }
+
+  initializeGoogleSignIn();
+
+  // Development-only OTP: the code is printed by the local backend terminal.
+  otpButton.addEventListener('click', async () => {
+    const phoneInput = window.prompt('Enter your phone number, including country code if needed:');
+    if (!phoneInput) return;
+
+    const phone = phoneInput.trim();
+    try {
+      await postAuthJson('/api/auth/otp/request', { phone });
+      showAuthMessage('OTP generated. Check the backend terminal for the six-digit code.', true);
+
+      const code = window.prompt('Enter the six-digit OTP shown in the backend terminal:');
+      if (!code) return;
+
+      const data = await postAuthJson('/api/auth/otp/verify', {
+        phone,
+        code: code.trim()
+      });
+
+      showAuthMessage('OTP verified. Redirecting...', true);
+      window.location.href = data.redirect || '/dashboard';
+    } catch (error) {
+      showAuthMessage(error.message || 'OTP sign-in failed.');
+    }
+  });
   checkSession();
 </script>
 
