@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RealIQ — Real Estate, Structured</title>
@@ -599,29 +600,9 @@
 
   initializeGoogleSignIn();
 
-  // Development-only OTP: the code is printed by the local backend terminal.
-  otpButton.addEventListener('click', async () => {
-    const phoneInput = window.prompt('Enter your phone number, including country code if needed:');
-    if (!phoneInput) return;
-
-    const phone = phoneInput.trim();
-    try {
-      await postAuthJson('/api/auth/otp/request', { phone });
-      showAuthMessage('OTP generated. Check the backend terminal for the six-digit code.', true);
-
-      const code = window.prompt('Enter the six-digit OTP shown in the backend terminal:');
-      if (!code) return;
-
-      const data = await postAuthJson('/api/auth/otp/verify', {
-        phone,
-        code: code.trim()
-      });
-
-      showAuthMessage('OTP verified. Redirecting...', true);
-      window.location.href = data.redirect || '/dashboard';
-    } catch (error) {
-      showAuthMessage(error.message || 'OTP sign-in failed.');
-    }
+  // OTP login uses a dedicated verification page.
+  otpButton.addEventListener('click', () => {
+    window.location.href = '/otp-login.html';
   });
   checkSession();
 </script>

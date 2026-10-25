@@ -27,3 +27,7 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+# Local backups - never commit
+backups/
+*.tar.gz
+index.before-encoding-repair.html
