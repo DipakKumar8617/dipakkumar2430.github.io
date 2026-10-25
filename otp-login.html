@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RealIQ | OTP Login</title>
+  <link rel="stylesheet" href="/styles.css">
+    <style>
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 20px;
+      background:
+        radial-gradient(ellipse at 15% 10%, rgba(34,55,82,.48), transparent 42%),
+        radial-gradient(ellipse at 90% 90%, rgba(198,161,91,.08), transparent 38%),
+        var(--navy-950);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .otp-card {
+      width: min(100%, 460px);
+      padding: 38px;
+      background: linear-gradient(145deg, rgba(22,39,61,.98), rgba(14,24,38,.99));
+      border: 1px solid rgba(198,161,91,.32);
+      border-radius: 6px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.38);
+    }
+
+    .otp-brand {
+      color: var(--brass-light);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .otp-brand::before {
+      content: '▰ ';
+      color: var(--brass);
+    }
+
+    .otp-card h1 {
+      margin: 18px 0 10px;
+      color: var(--white);
+      font-family: 'Fraunces', serif;
+      font-size: 34px;
+      font-weight: 500;
+      letter-spacing: -.02em;
+    }
+
+    .otp-muted {
+      color: rgba(255,255,255,.66);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .otp-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 25px;
+    }
+
+    .otp-form label {
+      color: var(--brass-light);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .otp-form input {
+      width: 100%;
+      min-height: 48px;
+      padding: 13px 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 3px;
+      background: rgba(10,18,30,.75);
+      color: var(--white);
+      font: inherit;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .otp-form input::placeholder {
+      color: rgba(255,255,255,.4);
+    }
+
+    .otp-form input:focus {
+      outline: none;
+      border-color: var(--brass);
+      box-shadow: 0 0 0 3px rgba(198,161,91,.13);
+    }
+
+    .otp-btn {
+      width: 100%;
+      min-height: 48px;
+      padding: 13px 16px;
+      border: 1px solid var(--brass);
+      border-radius: 3px;
+      background: var(--brass);
+      color: var(--navy-950);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, transform .2s;
+    }
+
+    .otp-btn:hover:not(:disabled) {
+      background: var(--brass-light);
+      border-color: var(--brass-light);
+      transform: translateY(-1px);
+    }
+
+    .otp-btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .otp-message {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 3px;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .otp-message.visible { display: block; }
+
+    .otp-message.success {
+      border: 1px solid rgba(100,190,145,.4);
+      background: rgba(35,100,72,.2);
+      color: #a7e2c0;
+    }
+
+    .otp-message.error {
+      border: 1px solid rgba(238,130,110,.4);
+      background: rgba(138,45,32,.2);
+      color: #ffc0b4;
+    }
+
+    .otp-divider {
+      margin: 27px 0;
+      border: 0;
+      border-top: 1px solid rgba(255,255,255,.13);
+    }
+
+    .otp-back {
+      display: inline-block;
+      margin-top: 24px;
+      color: var(--brass-light);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .otp-back:hover { color: var(--white); }
+
+    .otp-demo-note {
+      margin-top: 20px;
+      padding: 13px;
+      border: 1px solid rgba(198,161,91,.3);
+      background: rgba(198,161,91,.07);
+      border-radius: 3px;
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .otp-demo-note strong { color: var(--brass-light); }
+
+    @media (max-width: 480px) {
+      body { padding: 18px 14px; }
+      .otp-card { padding: 27px 22px; }
+      .otp-card h1 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="otp-card">
+    <div class="otp-brand">RealIQ</div>
+    <h1>Sign in with OTP</h1>
+    <p class="otp-muted">Enter your phone number to generate a one-time code for this local demo.</p>
+
+    <form id="phoneForm" class="otp-form">
+      <label for="phone">Phone number</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210" required maxlength="20">
+      <button class="otp-btn" id="requestButton" type="submit">Generate OTP</button>
+    </form>
+
+    <div id="otpToast" class="otp-message" role="status" aria-live="polite"></div>
+
+    <hr class="otp-divider">
+
+    <form id="verifyForm" class="otp-form">
+      <label for="code">Six-digit OTP</label>
+      <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter 6-digit code" pattern="[0-9]{6}" minlength="6" maxlength="6" required>
+      <button class="otp-btn" id="verifyButton" type="submit">Verify and sign in</button>
+    </form>
+
+    <p id="resendText" class="otp-muted" style="margin-top:12px">Generate an OTP to begin.</p>
+
+    <div class="otp-demo-note">
+      <strong>Investor demo mode:</strong> no SMS is sent. The locally generated OTP is shown on this page only while the backend is running in development mode.
+    </div>
+
+    <a class="otp-back" href="/">â† Back to home</a>
+  </main>
+
+  <script>
+    const phoneForm = document.getElementById('phoneForm');
+    const verifyForm = document.getElementById('verifyForm');
+    const phoneInput = document.getElementById('phone');
+    const codeInput = document.getElementById('code');
+    const requestButton = document.getElementById('requestButton');
+    const verifyButton = document.getElementById('verifyButton');
+    const otpToast = document.getElementById('otpToast');
+    const resendText = document.getElementById('resendText');
+
+    let resendAvailableAt = 0;
+    let currentPhone = '';
+
+    function showMessage(message, success = false) {
+      otpToast.textContent = message;
+      otpToast.className = 'otp-message visible ' + (success ? 'success' : 'error');
+    }
+
+    async function postAuthJson(path, payload) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Request failed. Please try again.');
+      }
+      return data;
+    }
+
+    phoneForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const phone = phoneInput.value.trim();
+      if (!phone) return;
+
+      if (Date.now() < resendAvailableAt) {
+        showMessage('Please wait before requesting another OTP.');
+        return;
+      }
+
+      requestButton.disabled = true;
+      requestButton.textContent = 'Generating...';
+
+      try {
+        const data = await postAuthJson('/api/auth/otp/request', { phone });
+        currentPhone = phone;
+        codeInput.value = '';
+        resendAvailableAt = Date.now() + 30000;
+
+        if (data.demo_code) {
+          showMessage('Your demo OTP is ' + data.demo_code + '. It expires in 5 minutes. No SMS was sent.', true);
+        } else {
+          showMessage(data.message || 'OTP requested successfully.', true);
+        }
+        resendText.textContent = 'You can request another code in 30 seconds.';
+      } catch (error) {
+        showMessage(error.message || 'Could not generate OTP.');
+      } finally {
+        requestButton.disabled = false;
+        requestButton.textContent = 'Generate OTP';
+      }
+    });
+
+    verifyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const phone = currentPhone || phoneInput.value.trim();
+      const code = codeInput.value.trim();
+
+      if (!phone) {
+        showMessage('Enter your phone number and generate an OTP first.');
+        phoneInput.focus();
+        return;
+      }
+      if (!/^[0-9]{6}$/.test(code)) {
+        showMessage('Enter the six-digit OTP.');
+        codeInput.focus();
+        return;
+      }
+
+      verifyButton.disabled = true;
+      verifyButton.textContent = 'Verifying...';
+
+      try {
+        const data = await postAuthJson('/api/auth/otp/verify', { phone, code });
+        showMessage('OTP verified. Redirecting...', true);
+        window.location.href = data.redirect || '/dashboard';
+      } catch (error) {
+        showMessage(error.message || 'OTP verification failed.');
+      } finally {
+        verifyButton.disabled = false;
+        verifyButton.textContent = 'Verify and sign in';
+      }
+    });
+  </script>
+</body>
+</html>

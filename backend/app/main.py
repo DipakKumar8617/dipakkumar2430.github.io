@@ -83,6 +83,11 @@ def index_page():
     return FileResponse(PROJECT_ROOT / "index.html")
 
 
+@app.get("/otp-login.html")
+def otp_login_page():
+    return FileResponse(PROJECT_ROOT / "otp-login.html")
+
+
 @app.get("/register.html")
 def register_page():
     return FileResponse(PROJECT_ROOT / "register.html")
@@ -100,6 +105,14 @@ def buyer_enquiry_page():
 
 app.mount("/images", StaticFiles(directory=PROJECT_ROOT / "images"), name="images")
 
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    return RedirectResponse("/favicon.svg", status_code=307)
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg():
+    return FileResponse(PROJECT_ROOT / "favicon.svg", media_type="image/svg+xml")
 
 @app.get("/styles.css")
 def stylesheet():
@@ -177,7 +190,7 @@ def request_otp(payload: OTPRequest):
 
     # Intentionally printed only in the local development terminal.
     print(f"\n[RealIQ LOCAL OTP] Phone: {phone} | Code: {code} | Expires in 5 minutes\n")
-    return {"success": True, "message": "Local OTP generated. Check the backend terminal."}
+    return {"success": True, "message": "Demo OTP generated.", "demo_code": code}
 
 
 @app.post("/api/auth/otp/verify")
