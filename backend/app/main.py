@@ -14,8 +14,10 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import APP_ENV, GOOGLE_CLIENT_ID, PROJECT_ROOT
 from .config import os
+from .buyer import router as buyer_router
 
 app = FastAPI(title="RealIQ Authentication API")
+app.include_router(buyer_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 if not SESSION_SECRET:
