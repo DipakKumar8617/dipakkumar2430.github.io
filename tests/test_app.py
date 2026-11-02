@@ -58,9 +58,10 @@ def test_otp_login_dashboard_and_logout(client):
     session = client.get("/api/session")
     assert session.status_code == 200
     assert session.json()["authenticated"] is True
+    assert session.json()["user"]["role"] == "Unassigned"
 
     dashboard = client.get("/dashboard", follow_redirects=False)
-    assert dashboard.status_code == 200
+    assert dashboard.status_code == 403
 
     logout = client.post("/api/logout")
     assert logout.status_code == 200
