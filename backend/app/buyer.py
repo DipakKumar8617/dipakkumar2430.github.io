@@ -2,9 +2,9 @@ from datetime import datetime
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -50,6 +50,13 @@ class PropertyListingData(BaseModel):
     description: str | None
     image_url: str | None
     availability_status: str
+
+class InventorySearchResponse(BaseModel):
+    items: list[PropertyListingData]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
 
 
 class BuyerProfileData(BaseModel):
@@ -134,6 +141,142 @@ def get_public_inventory(db: Session = Depends(get_db)):
             )
             .order_by(PropertyListing.created_at.desc(), PropertyListing.id.desc())
         ).all()
+    )
+
+
+
+@router.get("/inventory/search", response_model=InventorySearchResponse)
+def search_public_inventory(
+    q: str | None = Query(default=None, max_length=120),
+    city: str | None = Query(default=None, max_length=100),
+    state: str | None = Query(default=None, max_length=100),
+    property_type: Literal[
+        "apartment", "villa", "plot", "commercial", "other"
+    ] | None = None,
+    min_price: int | None = Query(default=None, ge=0),
+    max_price: int | None = Query(default=None, ge=0),
+    min_bedrooms: int | None = Query(default=None, ge=0),
+    max_bedrooms: int | None = Query(default=None, ge=0),
+    min_area: int | None = Query(default=None, ge=1),
+    max_area: int | None = Query(default=None, ge=1),
+    sort: Literal[
+        "newest", "price_asc", "price_desc", "area_asc", "area_desc"
+    ] = "newest",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=48),
+    db: Session = Depends(get_db),
+):
+    """Search publicly available properties with filters and pagination."""
+
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(status_code=422, detail="min_price cannot exceed max_price")
+
+    if (
+        min_bedrooms is not None
+        and max_bedrooms is not None
+        and min_bedrooms > max_bedrooms
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="min_bedrooms cannot exceed max_bedrooms",
+        )
+
+    if min_area is not None and max_area is not None and min_area > max_area:
+        raise HTTPException(status_code=422, detail="min_area cannot exceed max_area")
+
+    filters = [
+        PropertyListing.is_published.is_(True),
+        PropertyListing.availability_status == "available",
+    ]
+
+    if q and q.strip():
+        keyword = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{keyword}%"
+        filters.append(
+            or_(
+                PropertyListing.title.ilike(pattern, escape="\\"),
+                PropertyListing.description.ilike(pattern, escape="\\"),
+                PropertyListing.property_type.ilike(pattern, escape="\\"),
+                PropertyListing.city.ilike(pattern, escape="\\"),
+                PropertyListing.state.ilike(pattern, escape="\\"),
+            )
+        )
+
+    if city and city.strip():
+        filters.append(func.lower(PropertyListing.city) == city.strip().lower())
+
+    if state and state.strip():
+        filters.append(func.lower(PropertyListing.state) == state.strip().lower())
+
+    if property_type is not None:
+        filters.append(PropertyListing.property_type == property_type)
+
+    if min_price is not None:
+        filters.append(PropertyListing.price_inr >= min_price)
+
+    if max_price is not None:
+        filters.append(PropertyListing.price_inr <= max_price)
+
+    if min_bedrooms is not None:
+        filters.append(PropertyListing.bedrooms >= min_bedrooms)
+
+    if max_bedrooms is not None:
+        filters.append(PropertyListing.bedrooms <= max_bedrooms)
+
+    if min_area is not None:
+        filters.append(PropertyListing.area_sqft >= min_area)
+
+    if max_area is not None:
+        filters.append(PropertyListing.area_sqft <= max_area)
+
+    total = db.scalar(
+        select(func.count())
+        .select_from(PropertyListing)
+        .where(*filters)
+    ) or 0
+
+    statement = select(PropertyListing).where(*filters)
+
+    if sort == "price_asc":
+        statement = statement.order_by(
+            case((PropertyListing.price_inr.is_(None), 1), else_=0),
+            PropertyListing.price_inr.asc(),
+            PropertyListing.id.desc(),
+        )
+    elif sort == "price_desc":
+        statement = statement.order_by(
+            case((PropertyListing.price_inr.is_(None), 1), else_=0),
+            PropertyListing.price_inr.desc(),
+            PropertyListing.id.desc(),
+        )
+    elif sort == "area_asc":
+        statement = statement.order_by(
+            case((PropertyListing.area_sqft.is_(None), 1), else_=0),
+            PropertyListing.area_sqft.asc(),
+            PropertyListing.id.desc(),
+        )
+    elif sort == "area_desc":
+        statement = statement.order_by(
+            case((PropertyListing.area_sqft.is_(None), 1), else_=0),
+            PropertyListing.area_sqft.desc(),
+            PropertyListing.id.desc(),
+        )
+    else:
+        statement = statement.order_by(
+            PropertyListing.created_at.desc(),
+            PropertyListing.id.desc(),
+        )
+
+    items = db.scalars(
+        statement.offset((page - 1) * page_size).limit(page_size)
+    ).all()
+
+    return InventorySearchResponse(
+        items=items,
+        page=page,
+        page_size=page_size,
+        total=total,
+        total_pages=(total + page_size - 1) // page_size,
     )
 
 
