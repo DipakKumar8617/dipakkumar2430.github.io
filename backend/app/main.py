@@ -16,12 +16,12 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import APP_ENV, GOOGLE_CLIENT_ID, PROJECT_ROOT
 from .config import os
-from .buyer import authenticated_identity, find_profile, router as buyer_router
+from .buyer import authenticated_account, find_profile, router as buyer_router
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .database import get_db
-from .models import UserAccount
+from .models import AuthIdentity, UserAccount
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
@@ -156,17 +156,17 @@ def _buyer_login_redirect(request: Request):
 def buyer_entry(request: Request, db: Session = Depends(get_db)):
     if not isinstance(request.session.get("user"), dict):
         return _buyer_login_redirect(request)
-    provider, subject = authenticated_identity(request)
-    profile = find_profile(db, provider, subject)
+    account, _provider, _subject = authenticated_account(request, db)
+    profile = find_profile(db, account.id)
     destination = "/buyer/dashboard" if profile else "/buyer/onboarding"
     return RedirectResponse(destination + _buyer_property_suffix(request), status_code=303)
 
 
 @app.get("/buyer/onboarding")
-def buyer_onboarding_page(request: Request):
+def buyer_onboarding_page(request: Request, db: Session = Depends(get_db)):
     if not isinstance(request.session.get("user"), dict):
         return _buyer_login_redirect(request)
-    authenticated_identity(request)
+    authenticated_account(request, db)
     return FileResponse(PROJECT_ROOT / "buyer-onboarding.html")
 
 
@@ -174,8 +174,8 @@ def buyer_onboarding_page(request: Request):
 def buyer_dashboard_page(request: Request, db: Session = Depends(get_db)):
     if not isinstance(request.session.get("user"), dict):
         return _buyer_login_redirect(request)
-    provider, subject = authenticated_identity(request)
-    profile = find_profile(db, provider, subject)
+    account, _provider, _subject = authenticated_account(request, db)
+    profile = find_profile(db, account.id)
     if not profile:
         return RedirectResponse(
             "/buyer/onboarding" + _buyer_property_suffix(request),
@@ -264,7 +264,7 @@ def register_buyer(
     payload: ManualBuyerRegistration,
     db: Session = Depends(get_db),
 ):
-    """Create a Buyer account without signing the user in."""
+    """Create a Buyer account and its password identity without signing in."""
     if payload.role.strip().lower() != "buyer":
         raise HTTPException(
             status_code=403,
@@ -277,18 +277,12 @@ def register_buyer(
 
     if len(full_name) < 2:
         raise HTTPException(status_code=422, detail="Enter your full name.")
-
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(status_code=422, detail="Enter a valid email address.")
-
     if payload.password != payload.confirmPassword:
         raise HTTPException(status_code=422, detail="Passwords do not match.")
-
     if db.scalar(select(UserAccount.id).where(UserAccount.email == email)):
-        raise HTTPException(
-            status_code=409,
-            detail="An account with this email already exists.",
-        )
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
 
     account = UserAccount(
         full_name=full_name,
@@ -298,22 +292,23 @@ def register_buyer(
         role="buyer",
     )
     db.add(account)
-
     try:
+        db.flush()
+        db.add(AuthIdentity(
+            account_id=account.id,
+            provider="local_password",
+            provider_subject=str(account.id),
+        ))
         db.commit()
         db.refresh(account)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=409,
-            detail="An account with this email already exists.",
-        )
+        raise HTTPException(status_code=409, detail="An account with this email or sign-in identity already exists.")
 
     redirect = "/index.html?next=%2Fbuyer&registered=1"
     if payload.property_id is not None:
         redirect += f"&property_id={payload.property_id}"
     redirect += "#login"
-
     return {
         "success": True,
         "message": "Account created. Please sign in to continue.",
@@ -327,20 +322,44 @@ def buyer_password_login(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Authenticate an existing manually registered Buyer."""
+    """Authenticate a password account through its canonical identity."""
     email = payload.identifier.strip().lower()
-    account = db.scalar(
-        select(UserAccount).where(UserAccount.email == email)
-    )
-
+    account = db.scalar(select(UserAccount).where(UserAccount.email == email))
     if (
         account is None
         or account.role != "buyer"
+        or not account.password_hash
         or not verify_password(payload.password, account.password_hash)
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == "local_password",
+            AuthIdentity.provider_subject == str(account.id),
+        )
+    )
+    if identity is None:
+        db.add(AuthIdentity(
+            account_id=account.id,
+            provider="local_password",
+            provider_subject=str(account.id),
+        ))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            identity = db.scalar(
+                select(AuthIdentity).where(
+                    AuthIdentity.provider == "local_password",
+                    AuthIdentity.provider_subject == str(account.id),
+                )
+            )
+            if identity is None or identity.account_id != account.id:
+                raise HTTPException(status_code=409, detail="Password identity is linked to another account.")
+
     user = {
+        "account_id": account.id,
         "provider": "local_password",
         "providerId": str(account.id),
         "email": account.email,
@@ -353,46 +372,103 @@ def buyer_password_login(
     redirect = "/buyer"
     if payload.property_id is not None:
         redirect += f"?property_id={payload.property_id}"
-
     return {"success": True, "user": user, "redirect": redirect}
 
 
 @app.post("/api/auth/google")
-def google_login(payload: GoogleLogin, request: Request):
+def google_login(
+    payload: GoogleLogin,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="Google Sign-In is not configured.")
-
     try:
         claims = id_token.verify_oauth2_token(
-            payload.credential,
-            google_requests.Request(),
-            GOOGLE_CLIENT_ID,
+            payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
         )
     except Exception:
         raise HTTPException(status_code=401, detail="Google token is invalid or expired.")
 
     if not claims.get("email_verified"):
         raise HTTPException(status_code=401, detail="Google email is not verified.")
-
-    email = claims.get("email")
-    subject = claims.get("sub")
+    email = str(claims.get("email") or "").strip().lower()
+    subject = str(claims.get("sub") or "").strip()
     if not email or not subject:
         raise HTTPException(status_code=401, detail="Google account details are incomplete.")
 
-    # Google verifies identity. Buyer access is granted only when the
-    # request explicitly originates from the Buyer authentication journey.
-    role = "Buyer" if payload.purpose == "buyer" else "Unassigned"
-    redirect = "/buyer" if role == "Buyer" else "/dashboard"
+    # A generic Google sign-in is not sufficient to create or grant a Buyer account.
+    if payload.purpose != "buyer":
+        user = {
+            "provider": "google",
+            "providerId": subject,
+            "email": email,
+            "fullName": claims.get("name") or email,
+            "role": "Unassigned",
+            "account_id": None,
+        }
+        set_session(request, user)
+        return {"success": True, "user": user, "redirect": "/dashboard"}
+
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == "google",
+            AuthIdentity.provider_subject == subject,
+        )
+    )
+    account = db.get(UserAccount, identity.account_id) if identity else None
+
+    if identity is None:
+        # Never merge accounts based only on a matching email address.
+        email_account = db.scalar(select(UserAccount).where(UserAccount.email == email))
+        if email_account is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="An account with this email already exists. Sign in using that account before linking Google.",
+            )
+
+        account = UserAccount(
+            full_name=claims.get("name") or None,
+            email=email,
+            phone=None,
+            password_hash=None,
+            role="buyer",
+        )
+        db.add(account)
+        try:
+            db.flush()
+            db.add(AuthIdentity(
+                account_id=account.id,
+                provider="google",
+                provider_subject=subject,
+            ))
+            db.commit()
+            db.refresh(account)
+        except IntegrityError:
+            db.rollback()
+            identity = db.scalar(
+                select(AuthIdentity).where(
+                    AuthIdentity.provider == "google",
+                    AuthIdentity.provider_subject == subject,
+                )
+            )
+            if identity is None:
+                raise HTTPException(status_code=409, detail="An account with this email already exists.")
+            account = db.get(UserAccount, identity.account_id)
+
+    if account is None or account.role != "buyer":
+        raise HTTPException(status_code=403, detail="This Google identity is not linked to a Buyer account.")
 
     user = {
+        "account_id": account.id,
         "provider": "google",
         "providerId": subject,
         "email": email,
-        "fullName": claims.get("name") or email,
-        "role": role,
+        "fullName": account.full_name or claims.get("name") or email,
+        "role": "Buyer",
     }
     set_session(request, user)
-    return {"success": True, "user": user, "redirect": redirect}
+    return {"success": True, "user": user, "redirect": "/buyer"}
 
 
 @app.post("/api/auth/otp/request")
@@ -425,13 +501,16 @@ def request_otp(payload: OTPRequest):
 
 
 @app.post("/api/auth/otp/verify")
-def verify_otp(payload: OTPVerify, request: Request):
+def verify_otp(
+    payload: OTPVerify,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     if APP_ENV != "development":
         raise HTTPException(status_code=403, detail="Terminal OTP is disabled.")
 
     phone = normalize_phone(payload.phone)
     record = otp_records.get(phone)
-
     if not record:
         raise HTTPException(status_code=400, detail="Request an OTP first.")
     if time.time() > record["expires_at"]:
@@ -451,14 +530,77 @@ def verify_otp(payload: OTPVerify, request: Request):
 
     purpose = record.get("purpose")
     otp_records.pop(phone, None)
+
+    if purpose != "buyer":
+        user = {
+            "provider": "local_otp",
+            "phone": phone,
+            "fullName": phone,
+            "role": "Unassigned",
+            "account_id": None,
+        }
+        set_session(request, user)
+        return {"success": True, "user": user, "redirect": "/dashboard"}
+
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == "local_otp",
+            AuthIdentity.provider_subject == phone,
+        )
+    )
+    account = db.get(UserAccount, identity.account_id) if identity else None
+
+    if identity is None:
+        # A phone match alone does not prove ownership of an existing password account.
+        phone_account = db.scalar(select(UserAccount).where(UserAccount.phone == phone))
+        if phone_account is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="This phone is already on an account. Sign in to that account before linking OTP sign-in.",
+            )
+
+        account = UserAccount(
+            full_name=None,
+            email=None,
+            phone=phone,
+            password_hash=None,
+            role="buyer",
+        )
+        db.add(account)
+        try:
+            db.flush()
+            db.add(AuthIdentity(
+                account_id=account.id,
+                provider="local_otp",
+                provider_subject=phone,
+            ))
+            db.commit()
+            db.refresh(account)
+        except IntegrityError:
+            db.rollback()
+            identity = db.scalar(
+                select(AuthIdentity).where(
+                    AuthIdentity.provider == "local_otp",
+                    AuthIdentity.provider_subject == phone,
+                )
+            )
+            if identity is None:
+                raise HTTPException(status_code=409, detail="Could not create the Buyer identity. Please retry sign-in.")
+            account = db.get(UserAccount, identity.account_id)
+
+    if account is None or account.role != "buyer":
+        raise HTTPException(status_code=403, detail="This phone identity is not linked to a Buyer account.")
+
     user = {
+        "account_id": account.id,
         "provider": "local_otp",
         "phone": phone,
-        "fullName": phone,
-        "role": "Buyer" if purpose == "buyer" else "Unassigned",
+        "fullName": account.full_name or phone,
+        "email": account.email,
+        "role": "Buyer",
     }
     set_session(request, user)
-    return {"success": True, "user": user, "redirect": "/dashboard"}
+    return {"success": True, "user": user, "redirect": "/buyer"}
 
 
 @app.post("/api/logout")

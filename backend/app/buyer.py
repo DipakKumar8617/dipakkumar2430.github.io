@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import BuyerEnquiry, BuyerProfile, PropertyListing
+from .models import AuthIdentity, BuyerEnquiry, BuyerProfile, PropertyListing, UserAccount
 
 router = APIRouter(prefix="/api/buyer", tags=["buyer"])
 
@@ -66,17 +66,16 @@ class BuyerProfileData(BaseModel):
     updated_at: datetime
 
 
-def authenticated_identity(request: Request) -> tuple[str, str]:
+def authenticated_account(
+    request: Request, db: Session
+) -> tuple[UserAccount, str, str]:
+    """Resolve the signed-in buyer through the canonical account identity."""
     user = request.session.get("user")
     if not isinstance(user, dict):
         raise HTTPException(status_code=401, detail="Login required.")
 
-    role = user.get("role")
-    if not isinstance(role, str) or role.strip().casefold() != "buyer":
-        raise HTTPException(
-            status_code=403,
-            detail="Buyer access is required.",
-        )
+    if str(user.get("role", "")).strip().casefold() == "unassigned":
+        raise HTTPException(status_code=403, detail="Buyer access is required.")
 
     provider = user.get("provider")
     if provider == "google":
@@ -91,15 +90,35 @@ def authenticated_identity(request: Request) -> tuple[str, str]:
     if not isinstance(subject, str) or not subject.strip():
         raise HTTPException(status_code=401, detail="Valid account identity required.")
 
-    return provider, subject
-
-
-def find_profile(db: Session, provider: str, subject: str):
-    return db.scalar(
-        select(BuyerProfile).where(
-            BuyerProfile.auth_provider == provider,
-            BuyerProfile.auth_subject == subject,
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == provider,
+            AuthIdentity.provider_subject == subject,
         )
+    )
+    if identity is None:
+        raise HTTPException(status_code=401, detail="Account identity is not linked. Please sign in again.")
+
+    session_account_id = user.get("account_id")
+    if session_account_id is not None and str(session_account_id) != str(identity.account_id):
+        raise HTTPException(status_code=401, detail="Session identity does not match the account.")
+
+    account = db.get(UserAccount, identity.account_id)
+    if account is None:
+        raise HTTPException(status_code=401, detail="Account not found. Please sign in again.")
+    if str(account.role).strip().casefold() != "buyer":
+        raise HTTPException(status_code=403, detail="Buyer access is required.")
+
+    # Refresh the account id and role from the database, not from browser input.
+    user["account_id"] = account.id
+    user["role"] = "Buyer"
+    request.session["user"] = user
+    return account, provider, subject
+
+
+def find_profile(db: Session, account_id: int):
+    return db.scalar(
+        select(BuyerProfile).where(BuyerProfile.account_id == account_id)
     )
 
 
@@ -170,8 +189,8 @@ def get_buyer_profile(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    provider, subject = authenticated_identity(request)
-    profile = find_profile(db, provider, subject)
+    account, _provider, _subject = authenticated_account(request, db)
+    profile = find_profile(db, account.id)
     return {
         "profile": BuyerProfileData.model_validate(profile) if profile else None
     }
@@ -183,12 +202,13 @@ def save_buyer_profile(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    provider, subject = authenticated_identity(request)
+    account, provider, subject = authenticated_account(request, db)
     values = payload.model_dump(exclude_unset=True)
-    profile = find_profile(db, provider, subject)
+    profile = find_profile(db, account.id)
 
     if profile is None:
         profile = BuyerProfile(
+            account_id=account.id,
             auth_provider=provider,
             auth_subject=subject,
             buyer_type=payload.buyer_type,

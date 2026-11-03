@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -24,6 +25,10 @@ class BuyerProfile(Base):
             "auth_subject",
             name="uq_buyer_profile_auth_identity",
         ),
+        UniqueConstraint(
+            "account_id",
+            name="uq_buyer_profile_account",
+        ),
         CheckConstraint(
             "buyer_type IN ('indian_resident', 'nri_overseas')",
             name="ck_buyer_profile_type",
@@ -31,6 +36,10 @@ class BuyerProfile(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", name="fk_buyer_profiles_account_id_user_accounts", ondelete="RESTRICT"),
+        nullable=False,
+    )
 
     # Identity is derived from the authenticated session, not request input.
     auth_provider: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -130,13 +139,41 @@ class UserAccount(Base):
     __tablename__ = "user_accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    full_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     email: Mapped[str | None] = mapped_column(
-        String(254), nullable=False, unique=True, index=True
+        String(254), nullable=True, unique=True, index=True
     )
-    phone: Mapped[str] = mapped_column(String(20), nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(30), nullable=False, default="buyer")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class AuthIdentity(Base):
+    """A verified sign-in identity linked to one canonical account."""
+
+    __tablename__ = "auth_identities"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_subject",
+            name="uq_auth_identity_provider_subject",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", name="fk_auth_identities_account_id_user_accounts", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
     )
