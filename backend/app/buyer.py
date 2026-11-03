@@ -2,14 +2,21 @@ from datetime import datetime
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import case, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import AuthIdentity, BuyerEnquiry, BuyerProfile, PropertyListing, UserAccount
-
+from .models import (
+    AuthIdentity,
+    BuyerEnquiry,
+    BuyerProfile,
+    PropertyListing,
+    PropertyShortlist,
+    UserAccount,
+)
 router = APIRouter(prefix="/api/buyer", tags=["buyer"])
 
 
@@ -58,6 +65,26 @@ class InventorySearchResponse(BaseModel):
     total: int
     total_pages: int
 
+class PropertyShortlistData(BaseModel):
+    shortlist_id: int
+    created_at: datetime
+    property: PropertyListingData
+
+
+class PropertyShortlistSaveResponse(BaseModel):
+    saved: bool
+    already_saved: bool
+    property_id: int
+
+
+class PropertyShortlistDeleteResponse(BaseModel):
+    removed: bool
+    property_id: int
+
+
+class PropertyComparisonResponse(BaseModel):
+    items: list[PropertyListingData]
+    count: int
 
 class BuyerProfileData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -312,6 +339,244 @@ def get_public_property_detail(
         )
 
     return listing
+
+
+# --------------------------------------------------
+# BUYER PROPERTY SHORTLIST
+# --------------------------------------------------
+
+
+@router.post(
+    "/shortlist/{property_id}",
+    response_model=PropertyShortlistSaveResponse,
+    status_code=201,
+)
+def save_shortlisted_property(
+    property_id: int,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Save an available published property for the authenticated buyer."""
+
+    account, _provider, _subject = authenticated_account(request, db)
+
+    listing = db.scalar(
+        select(PropertyListing).where(
+            PropertyListing.id == property_id,
+            PropertyListing.is_published.is_(True),
+        )
+    )
+
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Property not found.",
+        )
+
+    existing = db.scalar(
+        select(PropertyShortlist).where(
+            PropertyShortlist.account_id == account.id,
+            PropertyShortlist.property_listing_id == property_id,
+        )
+    )
+
+    if existing is not None:
+        response.status_code = 200
+        return PropertyShortlistSaveResponse(
+            saved=True,
+            already_saved=True,
+            property_id=property_id,
+        )
+
+    if listing.availability_status != "available":
+        raise HTTPException(
+            status_code=404,
+            detail="Property is unavailable.",
+        )
+
+    shortlist = PropertyShortlist(
+        account_id=account.id,
+        property_listing_id=property_id,
+    )
+
+    db.add(shortlist)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+        existing = db.scalar(
+            select(PropertyShortlist).where(
+                PropertyShortlist.account_id == account.id,
+                PropertyShortlist.property_listing_id == property_id,
+            )
+        )
+
+        if existing is not None:
+            response.status_code = 200
+            return PropertyShortlistSaveResponse(
+                saved=True,
+                already_saved=True,
+                property_id=property_id,
+            )
+
+        raise HTTPException(
+            status_code=409,
+            detail="Property could not be saved. Please try again.",
+        )
+
+    return PropertyShortlistSaveResponse(
+        saved=True,
+        already_saved=False,
+        property_id=property_id,
+    )
+
+
+
+@router.get(
+    "/shortlist",
+    response_model=list[PropertyShortlistData],
+)
+def get_buyer_shortlist(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return the authenticated buyer's published saved properties."""
+
+    account, _provider, _subject = authenticated_account(request, db)
+
+    rows = db.execute(
+        select(PropertyShortlist, PropertyListing)
+        .join(
+            PropertyListing,
+            PropertyListing.id == PropertyShortlist.property_listing_id,
+        )
+        .where(
+            PropertyShortlist.account_id == account.id,
+            PropertyListing.is_published.is_(True),
+        )
+        .order_by(
+            PropertyShortlist.created_at.desc(),
+            PropertyShortlist.id.desc(),
+        )
+    ).all()
+
+    return [
+        PropertyShortlistData(
+            shortlist_id=shortlist.id,
+            created_at=shortlist.created_at,
+            property=listing,
+        )
+        for shortlist, listing in rows
+    ]
+
+
+@router.delete(
+    "/shortlist/{property_id}",
+    response_model=PropertyShortlistDeleteResponse,
+)
+def remove_shortlisted_property(
+    property_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Remove a property only from the authenticated buyer's shortlist."""
+
+    account, _provider, _subject = authenticated_account(request, db)
+
+    shortlist = db.scalar(
+        select(PropertyShortlist).where(
+            PropertyShortlist.account_id == account.id,
+            PropertyShortlist.property_listing_id == property_id,
+        )
+    )
+
+    if shortlist is None:
+        return PropertyShortlistDeleteResponse(
+            removed=False,
+            property_id=property_id,
+        )
+
+    db.delete(shortlist)
+    db.commit()
+
+    return PropertyShortlistDeleteResponse(
+        removed=True,
+        property_id=property_id,
+    )
+
+
+# --------------------------------------------------
+# BUYER PROPERTY COMPARISON
+# --------------------------------------------------
+
+@router.get(
+    "/shortlist/compare",
+    response_model=PropertyComparisonResponse,
+)
+def compare_shortlisted_properties(
+    request: Request,
+    property_ids: list[int] = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Compare two to four properties saved by the authenticated buyer."""
+
+    if not 2 <= len(property_ids) <= 4:
+        raise HTTPException(
+            status_code=422,
+            detail="Select between two and four properties to compare.",
+        )
+
+    if any(property_id <= 0 for property_id in property_ids):
+        raise HTTPException(
+            status_code=422,
+            detail="Property IDs must be positive integers.",
+        )
+
+    if len(set(property_ids)) != len(property_ids):
+        raise HTTPException(
+            status_code=422,
+            detail="Duplicate property IDs are not allowed.",
+        )
+
+    account, _provider, _subject = authenticated_account(request, db)
+
+    listings = db.scalars(
+        select(PropertyListing)
+        .join(
+            PropertyShortlist,
+            PropertyShortlist.property_listing_id == PropertyListing.id,
+        )
+        .where(
+            PropertyShortlist.account_id == account.id,
+            PropertyListing.id.in_(property_ids),
+            PropertyListing.is_published.is_(True),
+        )
+    ).all()
+
+    listings_by_id = {
+        listing.id: listing
+        for listing in listings
+    }
+
+    if len(listings_by_id) != len(property_ids):
+        raise HTTPException(
+            status_code=404,
+            detail="One or more properties are not in your shortlist.",
+        )
+
+    # Preserve the order selected by the buyer.
+    ordered_listings = [
+        listings_by_id[property_id]
+        for property_id in property_ids
+    ]
+
+    return PropertyComparisonResponse(
+        items=ordered_listings,
+        count=len(ordered_listings),
+    )
 
 
 @router.post("/enquiries", status_code=201)
