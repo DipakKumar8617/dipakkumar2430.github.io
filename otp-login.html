@@ -223,6 +223,13 @@
     const otpToast = document.getElementById('otpToast');
     const resendText = document.getElementById('resendText');
 
+    const otpParams = new URLSearchParams(window.location.search);
+    const buyerOtpMode = [
+      '/buyer',
+      '/buyer/onboarding',
+      '/buyer/dashboard'
+    ].includes(otpParams.get('next'));
+
     let resendAvailableAt = 0;
     let currentPhone = '';
 
@@ -259,7 +266,10 @@
       requestButton.textContent = 'Generating...';
 
       try {
-        const data = await postAuthJson('/api/auth/otp/request', { phone });
+        const requestPayload = buyerOtpMode
+          ? { phone, purpose: 'buyer' }
+          : { phone };
+        const data = await postAuthJson('/api/auth/otp/request', requestPayload);
         currentPhone = phone;
         codeInput.value = '';
         resendAvailableAt = Date.now() + 30000;
@@ -277,6 +287,18 @@
         requestButton.textContent = 'Generate OTP';
       }
     });
+
+    function getPostLoginRedirect(fallback = '/dashboard') {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('next');
+      const allowed = ['/buyer', '/buyer/onboarding', '/buyer/dashboard'];
+      if (!allowed.includes(requested)) return fallback;
+      if (requested !== '/buyer') return requested;
+      const propertyId = params.get('property_id');
+      return /^[1-9]\d{0,9}$/.test(propertyId || '')
+        ? `/buyer?property_id=${propertyId}`
+        : '/buyer';
+    }
 
     verifyForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -300,7 +322,7 @@
       try {
         const data = await postAuthJson('/api/auth/otp/verify', { phone, code });
         showMessage('OTP verified. Redirecting...', true);
-        window.location.href = data.redirect || '/dashboard';
+        window.location.href = getPostLoginRedirect(data.redirect || '/dashboard');
       } catch (error) {
         showMessage(error.message || 'OTP verification failed.');
       } finally {

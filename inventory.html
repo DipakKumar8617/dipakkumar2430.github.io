@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse published RealIQ property listings.">
+  <title>Property Inventory | RealIQ</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body{min-height:100vh;background:var(--paper);color:var(--ink)}
+    .inventory-main{max-width:1180px;margin:0 auto;padding:52px 28px 76px}
+    .inventory-head{display:flex;align-items:end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px}
+    .inventory-head h1{font-size:clamp(34px,5vw,52px);line-height:1.1;margin:10px 0}
+    .inventory-head p{max-width:650px;color:var(--slate);line-height:1.7}
+    .inventory-tools{display:flex;gap:12px;margin-bottom:24px}
+    .inventory-search{width:100%;max-width:520px;min-height:48px;padding:12px 14px;background:var(--white);border:1px solid var(--line);border-radius:2px;color:var(--ink);font:14px 'Inter',sans-serif}
+    .inventory-search:focus{outline:2px solid var(--brass);outline-offset:2px}
+    .inventory-status{margin:16px 0;color:var(--slate);font-size:13px;line-height:1.6}
+    .property-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+    .property-card{min-width:0;overflow:hidden;background:var(--white);border:1px solid var(--line);border-radius:4px;box-shadow:0 12px 26px rgba(16,24,38,.06);display:flex;flex-direction:column}
+    .property-image{height:190px;width:100%;object-fit:cover;background:var(--paper-dim)}
+    .property-image-placeholder{height:190px;display:flex;align-items:center;justify-content:center;background:var(--navy-950);color:var(--brass-light);font:11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase}
+    .property-body{padding:22px;display:flex;flex:1;flex-direction:column;gap:10px}
+    .property-type{font:10px 'IBM Plex Mono',monospace;color:var(--emerald);letter-spacing:.1em;text-transform:uppercase}
+    .property-body h2{font-size:23px;line-height:1.2;overflow-wrap:anywhere}
+    .property-location{font-size:13px;color:var(--slate)}
+    .property-price{font:24px 'Fraunces',serif;color:var(--ink)}
+    .property-meta{font:11px 'IBM Plex Mono',monospace;color:var(--slate);border-top:1px solid var(--line);padding-top:12px}
+    .property-description{font-size:13px;color:var(--slate);line-height:1.65;overflow-wrap:anywhere}
+    .select-property-button{margin-top:auto;min-height:46px;padding:12px 14px;background:var(--brass);color:var(--navy-950);border:1px solid transparent;border-radius:2px;font:600 12px 'Inter',sans-serif;cursor:pointer}
+    .select-property-button:hover{background:var(--brass-light)}
+    .select-property-button:focus-visible{outline:3px solid var(--navy-700);outline-offset:3px}
+    .empty-state{background:var(--white);border:1px solid var(--line);border-radius:4px;padding:32px;max-width:760px}
+    .empty-state h2{font-size:26px;margin-bottom:10px}
+    .empty-state p{color:var(--slate);line-height:1.7}
+    .back-link{display:inline-block;margin-top:20px;color:var(--navy-950);text-decoration:underline;font-size:13px}
+    [hidden]{display:none!important}
+    @media(max-width:900px){.property-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:600px){.inventory-main{padding:34px 18px 56px}.property-grid{grid-template-columns:1fr}.property-image,.property-image-placeholder{height:210px}.inventory-head h1{font-size:36px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <a class="logo" href="/"><span class="mark">?</span>RealIQ</a>
+      <nav class="links"><a href="/#listings">Home listings</a></nav>
+      <div class="nav-cta"><a class="btn btn-ghost" href="/">Back to home</a></div>
+    </div>
+  </header>
+
+  <main class="inventory-main">
+    <div class="inventory-head">
+      <div>
+        <div class="eyebrow">RealIQ inventory</div>
+        <h1>Find a property that fits.</h1>
+        <p>Browse properties that have been published to RealIQ and are marked available. Listings and prices are supplied by the inventory database.</p>
+      </div>
+    </div>
+
+    <div class="inventory-tools">
+      <input id="inventorySearch" class="inventory-search" type="search"
+             placeholder="Search title, property type, city or state"
+             aria-label="Search available properties">
+    </div>
+
+    <p id="inventoryStatus" class="inventory-status" role="status" aria-live="polite">Loading published inventory...</p>
+    <section id="propertyGrid" class="property-grid" aria-label="Available properties"></section>
+
+    <section id="emptyState" class="empty-state" hidden>
+      <h2>No published properties are currently available.</h2>
+      <p>RealIQ has no listings matching this view right now. Please check again later or return to the homepage. No demonstration listings are being shown as live inventory.</p>
+      <a class="back-link" href="/">Return to RealIQ homepage</a>
+    </section>
+    <p id="noMatches" class="inventory-status" hidden>No published properties match your search.</p>
+  </main>
+
+  <script>
+    const grid = document.getElementById('propertyGrid');
+    const statusNode = document.getElementById('inventoryStatus');
+    const emptyState = document.getElementById('emptyState');
+    const noMatches = document.getElementById('noMatches');
+    const searchInput = document.getElementById('inventorySearch');
+    let listings = [];
+
+    function safeImageUrl(value) {
+      if (!value) return null;
+      try {
+        const parsed = new URL(value, window.location.origin);
+        if (parsed.protocol !== 'https:' && parsed.origin !== window.location.origin) return null;
+        if (parsed.protocol === 'javascript:') return null;
+        return parsed.href;
+      } catch {
+        return null;
+      }
+    }
+
+    function addText(parent, tag, className, value) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      element.textContent = value;
+      parent.appendChild(element);
+      return element;
+    }
+
+    function formatPrice(value) {
+      if (value === null || value === undefined) return 'Price on enquiry';
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function renderListings() {
+      const query = searchInput.value.trim().toLowerCase();
+      const visible = listings.filter((item) =>
+        [item.title, item.property_type, item.city, item.state, item.description]
+          .filter(Boolean).some((value) => String(value).toLowerCase().includes(query))
+      );
+
+      grid.replaceChildren();
+      noMatches.hidden = true;
+
+      for (const item of visible) {
+        const card = document.createElement('article');
+        card.className = 'property-card';
+
+        const imageUrl = safeImageUrl(item.image_url);
+        if (imageUrl) {
+          const image = document.createElement('img');
+          image.className = 'property-image';
+          image.src = imageUrl;
+          image.alt = item.title;
+          image.loading = 'lazy';
+          card.appendChild(image);
+        } else {
+          addText(card, 'div', 'property-image-placeholder', 'RealIQ Property');
+        }
+
+        const body = document.createElement('div');
+        body.className = 'property-body';
+        addText(body, 'div', 'property-type', item.property_type.replaceAll('_', ' '));
+        addText(body, 'h2', '', item.title);
+        addText(body, 'p', 'property-location', `${item.city}, ${item.state}`);
+        addText(body, 'p', 'property-price', formatPrice(item.price_inr));
+
+        const metadata = [];
+        if (item.bedrooms !== null && item.bedrooms !== undefined) {
+          metadata.push(`${item.bedrooms} bedroom${item.bedrooms === 1 ? '' : 's'}`);
+        }
+        if (item.area_sqft) metadata.push(`${item.area_sqft.toLocaleString('en-IN')} sq.ft.`);
+        if (metadata.length) addText(body, 'p', 'property-meta', metadata.join(' ? '));
+
+        if (item.description) addText(body, 'p', 'property-description', item.description);
+        const propertyId = Number(item.id);
+        if (Number.isSafeInteger(propertyId) && propertyId > 0) {
+          const selectButton = document.createElement('button');
+          selectButton.type = 'button';
+          selectButton.className = 'select-property-button';
+          selectButton.textContent = 'Select property & continue';
+          selectButton.addEventListener('click', () => {
+            const params = new URLSearchParams({next: '/buyer', property_id: String(propertyId)});
+            window.location.assign(`/index.html?${params.toString()}#login`);
+          });
+          body.appendChild(selectButton);
+        }
+        card.appendChild(body);
+        grid.appendChild(card);
+      }
+
+      noMatches.hidden = visible.length > 0 || listings.length === 0;
+      emptyState.hidden = listings.length !== 0;
+      statusNode.textContent = `${listings.length} published available propert${listings.length === 1 ? 'y' : 'ies'}.`;
+    }
+
+    async function loadInventory() {
+      try {
+        const response = await fetch('/api/buyer/inventory');
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !Array.isArray(result)) {
+          throw new Error('Inventory could not be loaded. Please try again later.');
+        }
+        listings = result;
+        renderListings();
+      } catch (error) {
+        grid.replaceChildren();
+        emptyState.hidden = true;
+        noMatches.hidden = true;
+        statusNode.textContent = error.message || 'Inventory could not be loaded.';
+      }
+    }
+
+    searchInput.addEventListener('input', renderListings);
+    loadInventory();
+  </script>
+</body>
+</html>

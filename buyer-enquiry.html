@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,25 +229,70 @@
           Continue to inventory
         </button>
 
-        <p class="enquiry-note">
-          Your details have not been submitted or saved by this demo form.
+        <p class="enquiry-note" id="enquiryStatus" role="status" aria-live="polite">
+          Your details will be saved securely so you can continue to property inventory.
         </p>
       </form>
     </div>
   </main>
 
   <script>
-    document
-      .getElementById('buyerEnquiryForm')
-      .addEventListener('submit', function (event) {
-        event.preventDefault();
+    const enquiryForm = document.getElementById('buyerEnquiryForm');
+    const enquiryStatus = document.getElementById('enquiryStatus');
+    const enquirySubmit = enquiryForm.querySelector('[type="submit"]');
 
-        alert(
-          'The enquiry form is a visual prototype. ' +
-          'Submission will be enabled after the backend workflow is agreed.'
-        );
-      });
+    enquiryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const formData = new FormData(enquiryForm);
+      const payload = {
+        full_name: String(formData.get('fullName') || '').trim(),
+        email: String(formData.get('email') || '').trim(),
+        phone: String(formData.get('phone') || '').trim(),
+        city: String(formData.get('city') || '').trim(),
+        state: String(formData.get('state') || '').trim()
+      };
+
+      enquirySubmit.disabled = true;
+      enquiryStatus.textContent = 'Saving your details...';
+      enquiryStatus.setAttribute('aria-busy', 'true');
+
+      try {
+        const response = await fetch('/api/buyer/enquiries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const detail = Array.isArray(result.detail)
+            ? result.detail.map((item) => item.msg).join(' ')
+            : result.detail;
+
+          throw new Error(detail || 'We could not save your enquiry. Please check your details.');
+        }
+
+        enquiryStatus.textContent = 'Your details have been saved successfully.';
+        if (result.enquiry_id) {
+          sessionStorage.setItem('realiqBuyerEnquiryId', String(result.enquiry_id));
+        }
+
+        // Continue to the database-backed inventory page after saving the enquiry.
+        if (result.redirect) {
+          window.location.assign(result.redirect);
+        }
+      } catch (error) {
+        enquiryStatus.textContent =
+          error.message || 'Unable to reach RealIQ. Please try again.';
+        enquiryStatus.style.color = '#a13636';
+        enquirySubmit.disabled = false;
+      } finally {
+        enquiryStatus.removeAttribute('aria-busy');
+      }
+    });
   </script>
 </body>
 </html>
-```

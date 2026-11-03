@@ -210,6 +210,66 @@
   const submitBtn = document.getElementById('registerSubmit');
   const roleLabels = { buyer: "Buyer", cp: "Channel Partner", developer: "Developer", admin: "Admin" };
 
+  // Keep property-led registration separate from staff registration.
+  const registrationParams = new URLSearchParams(window.location.search);
+  const buyerJourney = registrationParams.get('next') === '/buyer';
+  const selectedPropertyId = registrationParams.get('property_id');
+  const safePropertyId = /^[1-9]\d{0,9}$/.test(selectedPropertyId || '')
+    ? selectedPropertyId
+    : '';
+  const buyerLoginUrl =
+    `/index.html?next=%2Fbuyer${safePropertyId ? `&property_id=${safePropertyId}` : ''}#login`;
+
+  if (buyerJourney) {
+    const roleGrid = document.getElementById('roleSelectGrid');
+    const eyebrow = document.querySelector('.register-wrap .eyebrow');
+    const heading = document.querySelector('.register-wrap h2');
+    const subtitle = document.querySelector('.register-wrap .sub');
+    const signupNote = document.querySelector('.register-wrap .signup-note');
+
+    // Only the Buyer card remains visible in this registration flow.
+    roleCards.forEach((card) => {
+      card.style.display = card.dataset.role === 'buyer' ? '' : 'none';
+    });
+    if (roleGrid) roleGrid.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    if (eyebrow) eyebrow.textContent = 'BUYER REGISTRATION';
+    if (heading) heading.textContent = 'Create your buyer account';
+    if (subtitle) {
+      subtitle.textContent = safePropertyId
+        ? `Complete your details to continue with selected property #${safePropertyId}. Registration does not reserve or purchase the property.`
+        : 'Complete your details to continue your property search.';
+    }
+
+    // Keep navigation inside the Buyer flow.
+    document.querySelectorAll('.nav-cta a[href="index.html#login"]')
+      .forEach((link) => { link.href = buyerLoginUrl; });
+    document.querySelectorAll('.nav-cta a[href="register.html"]')
+      .forEach((link) => {
+        link.href = `/register.html?next=%2Fbuyer${safePropertyId ? `&property_id=${safePropertyId}` : ''}`;
+      });
+
+    // Show the manual Buyer credential form.
+    const registrationForm = document.getElementById('registerForm');
+    if (registrationForm) {
+      registrationForm.style.display = '';
+    }
+
+    if (signupNote) {
+      signupNote.innerHTML =
+        `Already have an account? <a href="${buyerLoginUrl}">Sign in</a>`;
+    }
+  } else {
+    // Standard registration is for platform staff roles, not buyers.
+    roleCards.forEach((card) => {
+      card.style.display = card.dataset.role === 'buyer' ? 'none' : '';
+    });
+
+    const roleGrid = document.getElementById('roleSelectGrid');
+    if (roleGrid) {
+      roleGrid.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+    }
+  }
+
   function selectRole(role){
     roleCards.forEach(c => c.classList.toggle('active', c.dataset.role === role));
     Object.entries(roleFieldBlocks).forEach(([key, el]) => {
@@ -222,7 +282,7 @@
     card.addEventListener('click', () => selectRole(card.dataset.role));
   });
 
-  selectRole('buyer');
+  selectRole(buyerJourney ? 'buyer' : 'cp');
 
   const form = document.getElementById('registerForm');
   const msg  = document.getElementById('registerMsg');

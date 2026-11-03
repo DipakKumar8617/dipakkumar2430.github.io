@@ -1,7 +1,7 @@
 def login_with_otp(client, phone):
     response = client.post(
         "/api/auth/otp/request",
-        json={"phone": phone},
+        json={"phone": phone, "purpose": "buyer"},
     )
     assert response.status_code == 200
     code = response.json()["demo_code"]
@@ -99,3 +99,21 @@ def test_buyer_profiles_are_isolated_by_account(client):
     response = client.get("/api/buyer/profile")
     assert response.status_code == 200
     assert response.json()["profile"] is None
+
+def test_generic_otp_identity_cannot_access_buyer_profile(client):
+    response = client.post(
+        "/api/auth/otp/request",
+        json={"phone": "+919876543299"},
+    )
+    assert response.status_code == 200
+    code = response.json()["demo_code"]
+
+    response = client.post(
+        "/api/auth/otp/verify",
+        json={"phone": "+919876543299", "code": code},
+    )
+    assert response.status_code == 200
+
+    session = client.get("/api/session").json()
+    assert session["user"]["role"] == "Unassigned"
+    assert client.get("/api/buyer/profile").status_code == 403

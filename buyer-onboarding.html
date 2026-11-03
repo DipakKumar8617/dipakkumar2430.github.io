@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buyer onboarding | RealIQ</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body{background:var(--paper);min-height:100vh;color:var(--ink)}
+    .buyer-nav{background:var(--navy-950);color:var(--white);padding:20px max(24px,calc((100vw - 1120px)/2));display:flex;align-items:center;justify-content:space-between}
+    .buyer-nav .logo{color:var(--white)}
+    .nav-label{font:11px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--brass-light);text-transform:uppercase}
+    .wrap{max-width:850px;margin:52px auto;padding:0 22px 64px}
+    .eyebrow{font:11px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--emerald)}
+    h1{font-size:clamp(34px,5vw,52px);line-height:1.08;margin:12px 0}
+    .intro{color:var(--slate);max-width:620px;line-height:1.7}
+    .form-card{margin-top:30px;background:var(--white);border:1px solid var(--line);border-radius:4px;padding:clamp(22px,4vw,38px);box-shadow:0 12px 26px rgba(16,24,38,0.06)}
+    fieldset{border:0;padding:0;margin:0 0 28px}
+    legend,.field-label{font-weight:600;font-size:14px;display:block;margin-bottom:12px}
+    .type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .type-option{display:block;position:relative}
+    .type-option input{position:absolute;opacity:0;pointer-events:none}
+    .type-card{height:100%;border:1px solid var(--line);border-radius:3px;padding:20px;cursor:pointer;transition:border-color .15s,background .15s}
+    .type-card strong{display:block;margin-bottom:8px;font-size:16px}
+    .type-card span{color:var(--slate);font-size:13px;line-height:1.6}
+    .type-option input:checked+.type-card{border:2px solid var(--brass);background:var(--paper);padding:19px}
+    .type-option input:focus-visible+.type-card{outline:3px solid var(--brass);outline-offset:3px}
+    .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .field{min-width:0}
+    .field.full{grid-column:1/-1}
+    .field label{display:block;font:11px 'IBM Plex Mono',monospace;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);margin-bottom:8px}
+    .field input,.field select{width:100%;min-height:48px;border:1px solid var(--line);border-radius:2px;background:var(--paper);padding:12px;font:14px 'Inter',sans-serif;color:var(--ink)}
+    .field input:focus,.field select:focus{outline:2px solid var(--brass);outline-offset:1px}
+    .help{font-size:12px;color:var(--slate);line-height:1.5;margin-top:7px}
+    .form-actions{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:28px;flex-wrap:wrap}
+    .primary{background:var(--brass);color:var(--navy-950);border:1px solid transparent;border-radius:2px;padding:15px 22px;font-family:'Inter',sans-serif;font-weight:600;cursor:pointer;transition:background .2s}
+    .primary:hover:not(:disabled){background:var(--brass-light)}
+    .primary:disabled{opacity:.55;cursor:wait}
+    .status{font-size:13px;line-height:1.5;color:var(--emerald);min-height:20px}
+    .status.error{color:#a33a32}
+    .selected-property-panel{margin:24px 0;background:var(--navy-900);color:var(--white);border-radius:4px;padding:22px 24px}
+    .selected-property-panel .eyebrow{color:var(--brass-light)}
+    .selected-property-panel h2{font-size:23px;line-height:1.3;margin:10px 0}
+    .selected-property-panel p{font-size:13px;line-height:1.6;color:rgba(255,255,255,.8);margin:6px 0}
+    .back-link{color:var(--slate);font-size:13px;text-decoration:underline}
+    [hidden]{display:none!important}
+    @media(max-width:620px){.wrap{margin:34px auto}.type-grid,.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.form-actions{align-items:stretch;flex-direction:column}.primary{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="buyer-nav">
+    <a href="/" class="logo" style="text-decoration:none"><span class="mark">?</span>RealIQ</a>
+    <span class="nav-label">Buyer OS &middot; Setup</span>
+  </header>
+
+  <main class="wrap">
+    <div class="eyebrow">Your property journey starts here</div>
+    <h1>Let's make RealIQ yours.</h1>
+    <p class="intro">Tell us how you're buying property in India. Your buyer profile personalizes your workspace; you can update these preferences later.</p>
+
+    <section class="selected-property-panel" id="selectedPropertyContext" hidden aria-live="polite">
+      <div class="eyebrow">Your selected property</div>
+      <h2 id="selectedPropertyTitle">Checking property availability?</h2>
+      <p id="selectedPropertyDetails"></p>
+      <p>This selection is not a reservation or purchase. Availability must be checked again before any future booking.</p>
+    </section>
+
+    <form class="form-card" id="buyerProfileForm">
+      <fieldset>
+        <legend>Which describes you best?</legend>
+        <div class="type-grid">
+          <label class="type-option">
+            <input type="radio" name="buyer_type" value="indian_resident" required>
+            <span class="type-card">
+              <strong>Indian Resident</strong>
+              <span>Buying or investing while residing in India.</span>
+            </span>
+          </label>
+          <label class="type-option">
+            <input type="radio" name="buyer_type" value="nri_overseas" required>
+            <span class="type-card">
+              <strong>NRI / Overseas</strong>
+              <span>Exploring, investing or buying property in India from abroad.</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="fields">
+        <div class="field full">
+          <label for="fullName">Full name</label>
+          <input id="fullName" name="full_name" maxlength="160" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="preferredCity">Preferred city in India</label>
+          <input id="preferredCity" name="preferred_city" maxlength="100" placeholder="e.g. Kolkata">
+        </div>
+        <div class="field">
+          <label for="purpose">Primary purpose</label>
+          <select id="purpose" name="purchase_purpose">
+            <option value="">Choose a purpose</option>
+            <option value="self_use">Home for myself / family</option>
+            <option value="investment">Investment</option>
+            <option value="commercial">Commercial property</option>
+            <option value="land">Land</option>
+          </select>
+        </div>
+        <div class="field full" id="nriFields" hidden>
+          <div class="fields">
+            <div class="field">
+              <label for="country">Country of residence</label>
+              <input id="country" name="country_of_residence" maxlength="100" placeholder="e.g. United Arab Emirates">
+            </div>
+            <div class="field">
+              <label for="timezone">Time zone</label>
+              <input id="timezone" name="timezone" maxlength="80" placeholder="e.g. Asia/Dubai">
+              <p class="help">Use an IANA time zone such as Asia/Dubai or Europe/London.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a class="back-link" href="/dashboard">Back to existing dashboard</a>
+        <button class="primary" id="saveButton" type="submit">Save profile &amp; continue &rarr;</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('buyerProfileForm');
+    const nriFields = document.getElementById('nriFields');
+    const countryInput = document.getElementById('country');
+    const statusNode = document.getElementById('status');
+    const saveButton = document.getElementById('saveButton');
+
+    function selectedBuyerType() {
+      return form.querySelector('input[name="buyer_type"]:checked')?.value || '';
+    }
+
+    function updateBuyerTypeFields() {
+      const isNri = selectedBuyerType() === 'nri_overseas';
+      nriFields.hidden = !isNri;
+      countryInput.required = isNri;
+    }
+
+    function showStatus(message, isError = false) {
+      statusNode.textContent = message;
+      statusNode.classList.toggle('error', isError);
+    }
+
+    function selectedPropertyId() {
+      const value = new URLSearchParams(window.location.search).get('property_id');
+      return /^[1-9][0-9]{0,9}$/.test(value || '') ? value : null;
+    }
+
+    async function loadSelectedPropertyContext() {
+      const propertyId = selectedPropertyId();
+      if (!propertyId) return;
+      const panel = document.getElementById('selectedPropertyContext');
+      const title = document.getElementById('selectedPropertyTitle');
+      const details = document.getElementById('selectedPropertyDetails');
+      panel.hidden = false;
+      try {
+        const response = await fetch('/api/buyer/inventory');
+        const items = await response.json().catch(() => null);
+        if (!response.ok || !Array.isArray(items)) throw new Error('Could not verify the selected property.');
+        const property = items.find((item) => String(item.id) === propertyId);
+        if (!property) {
+          title.textContent = 'This property is no longer available';
+          details.textContent = 'It may have been sold, reserved, unpublished, or removed. Return to inventory to choose another property.';
+          return;
+        }
+        title.textContent = property.title;
+        const price = property.price_inr == null ? 'Price on enquiry' : new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0}).format(property.price_inr);
+        details.textContent = `${property.city}, ${property.state} ? ${price}`;
+      } catch (error) {
+        title.textContent = 'Selected property could not be verified';
+        details.textContent = error.message || 'Please check the live inventory before continuing.';
+      }
+    }
+
+    form.querySelectorAll('input[name="buyer_type"]').forEach((input) => {
+      input.addEventListener('change', updateBuyerTypeFields);
+    });
+
+    async function loadExistingProfile() {
+      try {
+        const response = await fetch('/api/buyer/profile');
+        if (response.status === 401) {
+          const params = new URLSearchParams({next: '/buyer'});
+          const propertyId = selectedPropertyId();
+          if (propertyId) params.set('property_id', propertyId);
+          window.location.replace(`/index.html?${params.toString()}#login`);
+          return;
+        }
+        if (!response.ok) throw new Error('Could not load your buyer profile.');
+
+        const result = await response.json();
+        const profile = result.profile;
+        if (!profile) return;
+
+        form.querySelector(`input[name="buyer_type"][value="${profile.buyer_type}"]`)?.click();
+        document.getElementById('fullName').value = profile.full_name || '';
+        document.getElementById('preferredCity').value = profile.preferred_city || '';
+        document.getElementById('purpose').value = profile.purchase_purpose || '';
+        countryInput.value = profile.country_of_residence || '';
+        document.getElementById('timezone').value = profile.timezone || '';
+        updateBuyerTypeFields();
+      } catch (error) {
+        showStatus(error.message || 'Could not load your profile.', true);
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const buyerType = selectedBuyerType();
+      if (!buyerType) {
+        showStatus('Please select your buyer type.', true);
+        return;
+      }
+
+      const payload = {
+        buyer_type: buyerType,
+        full_name: document.getElementById('fullName').value.trim(),
+        preferred_city: document.getElementById('preferredCity').value.trim() || null,
+        purchase_purpose: document.getElementById('purpose').value || null,
+        country_of_residence: buyerType === 'indian_resident'
+          ? 'India'
+          : countryInput.value.trim(),
+        timezone: buyerType === 'indian_resident'
+          ? 'Asia/Kolkata'
+          : (document.getElementById('timezone').value.trim() || null)
+      };
+
+      saveButton.disabled = true;
+      showStatus('Saving your buyer profile...');
+
+      try {
+        const response = await fetch('/api/buyer/profile', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.detail || 'Could not save your profile.');
+        }
+        showStatus('Profile saved. Opening your Buyer OS...');
+        const propertyId = selectedPropertyId();
+        window.location.assign(propertyId
+          ? `/buyer/dashboard?property_id=${propertyId}`
+          : '/buyer/dashboard');
+      } catch (error) {
+        showStatus(error.message || 'Could not save your profile.', true);
+        saveButton.disabled = false;
+      }
+    });
+
+    loadExistingProfile();
+    loadSelectedPropertyContext();
+  </script>
+</body>
+</html>
