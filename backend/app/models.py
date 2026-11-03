@@ -177,3 +177,43 @@ class AuthIdentity(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+class PropertyShortlist(Base):
+    """A buyer's saved property, owned by their canonical account."""
+
+    __tablename__ = "property_shortlists"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "property_listing_id",
+            name="uq_property_shortlist_account_listing",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_property_shortlists_account_id_user_accounts",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    property_listing_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_listings.id",
+            name="fk_property_shortlists_listing_id_property_listings",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
