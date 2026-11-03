@@ -1,0 +1,735 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View property details and specifications on RealIQ.">
+  <title>Property Details | RealIQ</title>
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+
+  <style>
+    body {
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .detail-main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 28px 76px;
+    }
+
+    .detail-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 30px;
+      color: var(--slate);
+      font: 11px 'IBM Plex Mono', monospace;
+    }
+
+    .detail-breadcrumb a {
+      color: var(--navy-950);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    .detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, .8fr);
+      gap: 34px;
+      align-items: start;
+    }
+
+    .detail-image-wrap {
+      position: relative;
+      min-height: 280px;
+      overflow: hidden;
+      background: var(--navy-950);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .detail-image {
+      display: block;
+      width: 100%;
+      min-height: 280px;
+      max-height: 590px;
+      object-fit: cover;
+    }
+
+    .detail-image-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 360px;
+      padding: 24px;
+      color: var(--brass-light);
+      font: 11px 'IBM Plex Mono', monospace;
+      letter-spacing: .12em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .detail-content {
+      min-width: 0;
+    }
+
+    .detail-eyebrow {
+      margin-bottom: 12px;
+      color: var(--emerald);
+      font: 11px 'IBM Plex Mono', monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .detail-title {
+      margin-bottom: 14px;
+      font: 500 clamp(30px, 4vw, 44px)/1.12 'Fraunces', serif;
+      overflow-wrap: anywhere;
+    }
+
+    .detail-location {
+      margin-bottom: 24px;
+      color: var(--slate);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .detail-price-label {
+      margin-bottom: 5px;
+      color: var(--slate);
+      font: 10px 'IBM Plex Mono', monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .detail-price {
+      margin-bottom: 24px;
+      color: var(--navy-950);
+      font: 500 clamp(27px, 4vw, 38px)/1.2 'Fraunces', serif;
+      overflow-wrap: anywhere;
+    }
+
+    .availability-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      color: var(--emerald);
+      background: var(--white);
+      font: 10px 'IBM Plex Mono', monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .availability-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+    }
+
+    .detail-specifications {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 24px;
+    }
+
+    .specification {
+      padding: 16px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 3px;
+    }
+
+    .specification-label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--slate);
+      font: 10px 'IBM Plex Mono', monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .specification-value {
+      color: var(--ink);
+      font: 500 20px 'Fraunces', serif;
+      overflow-wrap: anywhere;
+    }
+
+    .detail-description-section {
+      margin-top: 38px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+
+    .detail-section-heading {
+      margin-bottom: 15px;
+      font: 500 27px 'Fraunces', serif;
+    }
+
+    .detail-description {
+      color: var(--slate);
+      font-size: 14px;
+      line-height: 1.85;
+      overflow-wrap: anywhere;
+      white-space: pre-line;
+    }
+
+    .detail-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .continue-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      padding: 14px 18px;
+      background: var(--brass);
+      color: var(--navy-950);
+      border: 1px solid transparent;
+      border-radius: 2px;
+      font: 600 12px 'Inter', sans-serif;
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      transition: background .2s ease;
+    }
+
+    .continue-button:hover {
+      background: var(--brass-light);
+    }
+
+    .continue-button:focus-visible {
+      outline: 3px solid var(--navy-700);
+      outline-offset: 3px;
+    }
+
+    .detail-back-link {
+      display: inline-block;
+      color: var(--navy-950);
+      font-size: 12px;
+      text-align: center;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    .detail-state {
+      max-width: 720px;
+      margin: 55px auto;
+      padding: 38px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .detail-state h1 {
+      margin-bottom: 12px;
+      font: 500 32px 'Fraunces', serif;
+    }
+
+    .detail-state p {
+      margin-bottom: 20px;
+      color: var(--slate);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .detail-state a {
+      color: var(--navy-950);
+      font-size: 13px;
+      text-decoration: underline;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 800px) {
+      .detail-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-image {
+        max-height: 480px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .detail-main {
+        padding: 30px 18px 55px;
+      }
+
+      .detail-breadcrumb {
+        margin-bottom: 22px;
+      }
+
+      .detail-image-wrap,
+      .detail-image {
+        min-height: 220px;
+      }
+
+      .detail-image-placeholder {
+        min-height: 240px;
+      }
+
+      .detail-specifications {
+        gap: 9px;
+      }
+
+      .specification {
+        padding: 13px;
+      }
+
+      .detail-state {
+        margin: 30px auto;
+        padding: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="nav">
+      <a class="logo" href="/">
+        <span class="mark">?</span>RealIQ
+      </a>
+
+      <nav class="links">
+        <a href="/inventory">Discover properties</a>
+      </nav>
+
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/">Back to home</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="detail-main">
+
+    <nav class="detail-breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span aria-hidden="true">/</span>
+      <a href="/inventory">Property discovery</a>
+      <span aria-hidden="true">/</span>
+      <span>Details</span>
+    </nav>
+
+    <!-- Loading state -->
+
+    <section id="loadingState" class="detail-state" role="status">
+      <h1>Loading property details...</h1>
+      <p>
+        Retrieving the latest published property information from RealIQ.
+      </p>
+    </section>
+
+    <!-- Property not found or unavailable -->
+
+    <section id="errorState" class="detail-state" hidden>
+      <h1 id="errorTitle">Property unavailable</h1>
+
+      <p id="errorMessage">
+        This property could not be found or is no longer available.
+      </p>
+
+      <a href="/inventory">Return to property discovery</a>
+    </section>
+
+    <!-- Actual property information -->
+
+    <article id="propertyDetails" hidden>
+
+      <div class="detail-layout">
+
+        <div>
+          <div class="detail-image-wrap">
+
+            <img
+              id="propertyImage"
+              class="detail-image"
+              alt=""
+              hidden
+            >
+
+            <div
+              id="imagePlaceholder"
+              class="detail-image-placeholder"
+            >
+              RealIQ property
+            </div>
+
+          </div>
+
+          <section class="detail-description-section">
+            <h2 class="detail-section-heading">
+              About this property
+            </h2>
+
+            <p id="propertyDescription" class="detail-description"></p>
+
+            <p id="descriptionUnavailable" class="detail-description" hidden>
+              No additional description has been provided for this listing.
+            </p>
+          </section>
+        </div>
+
+        <div class="detail-content">
+
+          <div id="propertyType" class="detail-eyebrow"></div>
+
+          <h1 id="propertyTitle" class="detail-title"></h1>
+
+          <p id="propertyLocation" class="detail-location"></p>
+
+          <div class="detail-price-label">Listed price</div>
+
+          <div id="propertyPrice" class="detail-price"></div>
+
+          <div class="availability-label">
+            <span class="availability-dot"></span>
+            Currently available
+          </div>
+
+          <section
+            id="propertySpecifications"
+            class="detail-specifications"
+            aria-label="Property specifications"
+            hidden
+          ></section>
+
+          <div class="detail-actions">
+
+            <button
+              id="continueButton"
+              class="continue-button"
+              type="button"
+              disabled
+            >
+              Continue with this property
+            </button>
+
+            <a class="detail-back-link" href="/inventory">
+              Back to all properties
+            </a>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </article>
+
+  </main>
+
+  <script>
+    // --------------------------------------------------
+    // DOM ELEMENTS
+    // --------------------------------------------------
+
+    const loadingState = document.getElementById('loadingState');
+    const errorState = document.getElementById('errorState');
+    const errorTitle = document.getElementById('errorTitle');
+    const errorMessage = document.getElementById('errorMessage');
+
+    const propertyDetails = document.getElementById('propertyDetails');
+
+    const propertyImage = document.getElementById('propertyImage');
+    const imagePlaceholder = document.getElementById('imagePlaceholder');
+
+    const propertyType = document.getElementById('propertyType');
+    const propertyTitle = document.getElementById('propertyTitle');
+    const propertyLocation = document.getElementById('propertyLocation');
+    const propertyPrice = document.getElementById('propertyPrice');
+
+    const propertySpecifications =
+      document.getElementById('propertySpecifications');
+
+    const propertyDescription =
+      document.getElementById('propertyDescription');
+
+    const descriptionUnavailable =
+      document.getElementById('descriptionUnavailable');
+
+    const continueButton =
+      document.getElementById('continueButton');
+
+    // --------------------------------------------------
+    // PROPERTY ID
+    // --------------------------------------------------
+
+    function getPropertyId() {
+      const match = window.location.pathname.match(
+        /^\/property\/([1-9][0-9]{0,9})\/?$/
+      );
+
+      if (!match) {
+        return null;
+      }
+
+      const value = Number(match[1]);
+
+      return Number.isSafeInteger(value) && value > 0
+        ? value
+        : null;
+    }
+
+    // --------------------------------------------------
+    // HELPERS
+    // --------------------------------------------------
+
+    function safeImageUrl(value) {
+      if (!value || typeof value !== 'string') {
+        return null;
+      }
+
+      try {
+        const parsed = new URL(value, window.location.origin);
+
+        if (
+          parsed.protocol !== 'https:' &&
+          parsed.origin !== window.location.origin
+        ) {
+          return null;
+        }
+
+        return parsed.href;
+
+      } catch {
+        return null;
+      }
+    }
+
+    function formatPrice(value) {
+      if (value === null || value === undefined) {
+        return 'Price on enquiry';
+      }
+
+      if (!Number.isSafeInteger(value) || value < 0) {
+        return 'Price on enquiry';
+      }
+
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function showError(title, message) {
+      loadingState.hidden = true;
+      propertyDetails.hidden = true;
+      errorState.hidden = false;
+
+      errorTitle.textContent = title;
+      errorMessage.textContent = message;
+    }
+
+    function addSpecification(label, value) {
+      if (value === null || value === undefined) {
+        return;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'specification';
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'specification-label';
+      labelNode.textContent = label;
+
+      const valueNode = document.createElement('span');
+      valueNode.className = 'specification-value';
+      valueNode.textContent = value;
+
+      card.appendChild(labelNode);
+      card.appendChild(valueNode);
+
+      propertySpecifications.appendChild(card);
+    }
+
+    // --------------------------------------------------
+    // RENDER ACTUAL PROPERTY INFORMATION
+    // --------------------------------------------------
+
+    function renderProperty(property) {
+      propertyType.textContent =
+        String(property.property_type || '').replaceAll('_', ' ');
+
+      propertyTitle.textContent = property.title || 'Property';
+
+      propertyLocation.textContent =
+        [property.city, property.state].filter(Boolean).join(', ');
+
+      propertyPrice.textContent = formatPrice(property.price_inr);
+
+      // Image
+
+      const imageUrl = safeImageUrl(property.image_url);
+
+      if (imageUrl) {
+        propertyImage.src = imageUrl;
+        propertyImage.alt = property.title || 'Property image';
+        propertyImage.hidden = false;
+        imagePlaceholder.hidden = true;
+
+        propertyImage.addEventListener('error', () => {
+          propertyImage.hidden = true;
+          propertyImage.removeAttribute('src');
+          imagePlaceholder.hidden = false;
+        }, { once: true });
+
+      } else {
+        propertyImage.hidden = true;
+        imagePlaceholder.hidden = false;
+      }
+
+      // Specifications
+
+      propertySpecifications.replaceChildren();
+
+      addSpecification(
+        'Property type',
+        String(property.property_type || '').replaceAll('_', ' ')
+      );
+
+      if (property.bedrooms !== null && property.bedrooms !== undefined) {
+        addSpecification(
+          'Bedrooms',
+          String(property.bedrooms)
+        );
+      }
+
+      if (property.area_sqft !== null && property.area_sqft !== undefined) {
+        addSpecification(
+          'Area',
+          `${Number(property.area_sqft).toLocaleString('en-IN')} sq.ft.`
+        );
+      }
+
+      propertySpecifications.hidden =
+        propertySpecifications.childElementCount === 0;
+
+      // Description
+
+      if (
+        typeof property.description === 'string' &&
+        property.description.trim()
+      ) {
+        propertyDescription.textContent = property.description;
+        propertyDescription.hidden = false;
+        descriptionUnavailable.hidden = true;
+
+      } else {
+        propertyDescription.textContent = '';
+        propertyDescription.hidden = true;
+        descriptionUnavailable.hidden = false;
+      }
+
+      // Preserve the selected property through existing buyer flow.
+
+      continueButton.disabled = false;
+
+      continueButton.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          property_id: String(property.id)
+        });
+
+        window.location.assign(`/buyer?${params.toString()}`);
+      }, { once: true });
+
+      loadingState.hidden = true;
+      errorState.hidden = true;
+      propertyDetails.hidden = false;
+    }
+
+    // --------------------------------------------------
+    // LOAD PROPERTY FROM BACKEND
+    // --------------------------------------------------
+
+    async function loadProperty() {
+      const propertyId = getPropertyId();
+
+      if (!propertyId) {
+        showError(
+          'Invalid property',
+          'The requested property address is invalid. Please return to property discovery.'
+        );
+
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/buyer/inventory/${propertyId}`,
+          {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json'
+            }
+          }
+        );
+
+        const result = await response.json().catch(() => null);
+
+        if (response.status === 404) {
+          showError(
+            'Property unavailable',
+            'This property could not be found or is no longer available.'
+          );
+
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            'Property details could not be loaded. Please try again later.'
+          );
+        }
+
+        if (
+          !result ||
+          result.id !== propertyId ||
+          result.availability_status !== 'available'
+        ) {
+          showError(
+            'Property unavailable',
+            'This property could not be found or is no longer available.'
+          );
+
+          return;
+        }
+
+        renderProperty(result);
+
+      } catch (error) {
+        showError(
+          'Unable to load property',
+          error.message ||
+          'Property information is temporarily unavailable. Please try again later.'
+        );
+      }
+    }
+
+    loadProperty();
+  </script>
+
+</body>
+</html>
