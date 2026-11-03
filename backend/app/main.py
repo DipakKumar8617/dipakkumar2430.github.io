@@ -189,6 +189,16 @@ def inventory_page():
     return FileResponse(PROJECT_ROOT / "inventory.html")
 
 
+@app.get("/property/{property_id}")
+def property_detail_page(property_id: int):
+    if property_id < 1:
+        raise HTTPException(
+            status_code=404,
+            detail="Property not found.",
+        )
+
+    return FileResponse(PROJECT_ROOT / "property-detail.html")
+
 @app.get("/dashboard")
 def dashboard(request: Request):
     user = request.session.get("user")

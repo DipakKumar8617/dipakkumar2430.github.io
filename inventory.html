@@ -888,30 +888,23 @@
           );
         }
 
-        // Select property
+        // Open property details
 
-        const propertyId = Number(item.id);
+const propertyId = Number(item.id);
 
-        if (Number.isSafeInteger(propertyId) && propertyId > 0) {
-          const selectButton = document.createElement('button');
+if (Number.isSafeInteger(propertyId) && propertyId > 0) {
+  const detailButton = document.createElement('button');
 
-          selectButton.type = 'button';
-          selectButton.className = 'select-property-button';
-          selectButton.textContent = 'Select property & continue';
+  detailButton.type = 'button';
+  detailButton.className = 'select-property-button';
+  detailButton.textContent = 'View property details';
 
-          selectButton.addEventListener('click', () => {
-            const params = new URLSearchParams({
-              next: '/buyer',
-              property_id: String(propertyId)
-            });
+  detailButton.addEventListener('click', () => {
+    window.location.assign(`/property/${propertyId}`);
+  });
 
-            window.location.assign(
-              `/index.html?${params.toString()}#login`
-            );
-          });
-
-          body.appendChild(selectButton);
-        }
+  body.appendChild(detailButton);
+}
 
         card.appendChild(body);
         grid.appendChild(card);

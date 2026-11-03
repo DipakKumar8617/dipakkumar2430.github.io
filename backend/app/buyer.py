@@ -280,6 +280,40 @@ def search_public_inventory(
     )
 
 
+
+@router.get(
+    "/inventory/{listing_id}",
+    response_model=PropertyListingData,
+)
+def get_public_property_detail(
+    listing_id: int,
+    db: Session = Depends(get_db),
+):
+    """Return a property only when it is published and available."""
+
+    if listing_id < 1:
+        raise HTTPException(
+            status_code=404,
+            detail="Property not found.",
+        )
+
+    listing = db.scalar(
+        select(PropertyListing).where(
+            PropertyListing.id == listing_id,
+            PropertyListing.is_published.is_(True),
+            PropertyListing.availability_status == "available",
+        )
+    )
+
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Property not found.",
+        )
+
+    return listing
+
+
 @router.post("/enquiries", status_code=201)
 def create_buyer_enquiry(
     payload: BuyerEnquiryInput,
