@@ -1,96 +1,676 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Browse published RealIQ property listings.">
-  <title>Property Inventory | RealIQ</title>
+  <meta name="description" content="Discover and search published RealIQ property listings.">
+  <title>Property Discovery | RealIQ</title>
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+
   <style>
-    body{min-height:100vh;background:var(--paper);color:var(--ink)}
-    .inventory-main{max-width:1180px;margin:0 auto;padding:52px 28px 76px}
-    .inventory-head{display:flex;align-items:end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px}
-    .inventory-head h1{font-size:clamp(34px,5vw,52px);line-height:1.1;margin:10px 0}
-    .inventory-head p{max-width:650px;color:var(--slate);line-height:1.7}
-    .inventory-tools{display:flex;gap:12px;margin-bottom:24px}
-    .inventory-search{width:100%;max-width:520px;min-height:48px;padding:12px 14px;background:var(--white);border:1px solid var(--line);border-radius:2px;color:var(--ink);font:14px 'Inter',sans-serif}
-    .inventory-search:focus{outline:2px solid var(--brass);outline-offset:2px}
-    .inventory-status{margin:16px 0;color:var(--slate);font-size:13px;line-height:1.6}
-    .property-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
-    .property-card{min-width:0;overflow:hidden;background:var(--white);border:1px solid var(--line);border-radius:4px;box-shadow:0 12px 26px rgba(16,24,38,.06);display:flex;flex-direction:column}
-    .property-image{height:190px;width:100%;object-fit:cover;background:var(--paper-dim)}
-    .property-image-placeholder{height:190px;display:flex;align-items:center;justify-content:center;background:var(--navy-950);color:var(--brass-light);font:11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase}
-    .property-body{padding:22px;display:flex;flex:1;flex-direction:column;gap:10px}
-    .property-type{font:10px 'IBM Plex Mono',monospace;color:var(--emerald);letter-spacing:.1em;text-transform:uppercase}
-    .property-body h2{font-size:23px;line-height:1.2;overflow-wrap:anywhere}
-    .property-location{font-size:13px;color:var(--slate)}
-    .property-price{font:24px 'Fraunces',serif;color:var(--ink)}
-    .property-meta{font:11px 'IBM Plex Mono',monospace;color:var(--slate);border-top:1px solid var(--line);padding-top:12px}
-    .property-description{font-size:13px;color:var(--slate);line-height:1.65;overflow-wrap:anywhere}
-    .select-property-button{margin-top:auto;min-height:46px;padding:12px 14px;background:var(--brass);color:var(--navy-950);border:1px solid transparent;border-radius:2px;font:600 12px 'Inter',sans-serif;cursor:pointer}
-    .select-property-button:hover{background:var(--brass-light)}
-    .select-property-button:focus-visible{outline:3px solid var(--navy-700);outline-offset:3px}
-    .empty-state{background:var(--white);border:1px solid var(--line);border-radius:4px;padding:32px;max-width:760px}
-    .empty-state h2{font-size:26px;margin-bottom:10px}
-    .empty-state p{color:var(--slate);line-height:1.7}
-    .back-link{display:inline-block;margin-top:20px;color:var(--navy-950);text-decoration:underline;font-size:13px}
-    [hidden]{display:none!important}
-    @media(max-width:900px){.property-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:600px){.inventory-main{padding:34px 18px 56px}.property-grid{grid-template-columns:1fr}.property-image,.property-image-placeholder{height:210px}.inventory-head h1{font-size:36px}}
+    body {
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .inventory-main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 52px 28px 76px;
+    }
+
+    .inventory-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .inventory-head h1 {
+      font-size: clamp(34px, 5vw, 52px);
+      line-height: 1.1;
+      margin: 10px 0;
+    }
+
+    .inventory-head p {
+      max-width: 650px;
+      color: var(--slate);
+      line-height: 1.7;
+    }
+
+    .inventory-tools {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .inventory-search {
+      width: 100%;
+      max-width: 650px;
+      min-height: 48px;
+      padding: 12px 14px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      color: var(--ink);
+      font: 14px 'Inter', sans-serif;
+    }
+
+    .inventory-search:focus,
+    .inventory-filter:focus {
+      outline: 2px solid var(--brass);
+      outline-offset: 2px;
+    }
+
+    .inventory-filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      padding: 20px;
+      margin-bottom: 22px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      color: var(--slate);
+      font: 11px 'IBM Plex Mono', monospace;
+    }
+
+    .inventory-filter {
+      width: 100%;
+      min-width: 0;
+      min-height: 42px;
+      padding: 9px 10px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      color: var(--ink);
+      font: 13px 'Inter', sans-serif;
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .filter-reset,
+    .pagination-button {
+      min-height: 42px;
+      padding: 10px 15px;
+      background: var(--navy-950);
+      color: var(--white);
+      border: 1px solid var(--navy-950);
+      border-radius: 2px;
+      font: 600 11px 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    .filter-reset:hover,
+    .pagination-button:hover:not(:disabled) {
+      background: var(--navy-700);
+    }
+
+    .inventory-status {
+      margin: 16px 0;
+      color: var(--slate);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .property-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .property-card {
+      min-width: 0;
+      overflow: hidden;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      box-shadow: 0 12px 26px rgba(16, 24, 38, .06);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .property-image {
+      height: 190px;
+      width: 100%;
+      object-fit: cover;
+      background: var(--paper-dim);
+    }
+
+    .property-image-placeholder {
+      height: 190px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy-950);
+      color: var(--brass-light);
+      font: 11px 'IBM Plex Mono', monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .property-body {
+      padding: 22px;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .property-type {
+      font: 10px 'IBM Plex Mono', monospace;
+      color: var(--emerald);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .property-body h2 {
+      font-size: 23px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .property-location {
+      font-size: 13px;
+      color: var(--slate);
+    }
+
+    .property-price {
+      font: 24px 'Fraunces', serif;
+      color: var(--ink);
+    }
+
+    .property-meta {
+      font: 11px 'IBM Plex Mono', monospace;
+      color: var(--slate);
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .property-description {
+      font-size: 13px;
+      color: var(--slate);
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+    }
+
+    .select-property-button {
+      margin-top: auto;
+      min-height: 46px;
+      padding: 12px 14px;
+      background: var(--brass);
+      color: var(--navy-950);
+      border: 1px solid transparent;
+      border-radius: 2px;
+      font: 600 12px 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    .select-property-button:hover {
+      background: var(--brass-light);
+    }
+
+    .select-property-button:focus-visible {
+      outline: 3px solid var(--navy-700);
+      outline-offset: 3px;
+    }
+
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin: 30px 0;
+    }
+
+    .pagination-info {
+      color: var(--slate);
+      font: 12px 'IBM Plex Mono', monospace;
+    }
+
+    .pagination-button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 32px;
+      max-width: 760px;
+    }
+
+    .empty-state h2 {
+      font-size: 26px;
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      color: var(--slate);
+      line-height: 1.7;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: var(--navy-950);
+      text-decoration: underline;
+      font-size: 13px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .property-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inventory-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .inventory-main {
+        padding: 34px 18px 56px;
+      }
+
+      .property-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .property-image,
+      .property-image-placeholder {
+        height: 210px;
+      }
+
+      .inventory-head h1 {
+        font-size: 36px;
+      }
+
+      .inventory-filters {
+        grid-template-columns: 1fr;
+      }
+
+      .pagination-controls {
+        gap: 10px;
+      }
+
+      .pagination-button {
+        padding: 9px 11px;
+      }
+
+      .pagination-info {
+        font-size: 11px;
+      }
+    }
   </style>
 </head>
+
 <body>
+
   <header>
     <div class="nav">
-      <a class="logo" href="/"><span class="mark">?</span>RealIQ</a>
-      <nav class="links"><a href="/#listings">Home listings</a></nav>
-      <div class="nav-cta"><a class="btn btn-ghost" href="/">Back to home</a></div>
+      <a class="logo" href="/">
+        <span class="mark">?</span>RealIQ
+      </a>
+
+      <nav class="links">
+        <a href="/#listings">Home listings</a>
+      </nav>
+
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/">Back to home</a>
+      </div>
     </div>
   </header>
 
   <main class="inventory-main">
+
     <div class="inventory-head">
       <div>
         <div class="eyebrow">RealIQ inventory</div>
+
         <h1>Find a property that fits.</h1>
-        <p>Browse properties that have been published to RealIQ and are marked available. Listings and prices are supplied by the inventory database.</p>
+
+        <p>
+          Discover properties published to RealIQ and marked available.
+          Search by location, property type, budget and your preferred
+          property requirements.
+        </p>
       </div>
     </div>
 
+    <!-- Keyword search -->
+
     <div class="inventory-tools">
-      <input id="inventorySearch" class="inventory-search" type="search"
-             placeholder="Search title, property type, city or state"
-             aria-label="Search available properties">
+      <input
+        id="inventorySearch"
+        class="inventory-search"
+        type="search"
+        placeholder="Search title, description, property type, city or state"
+        aria-label="Search available properties"
+        autocomplete="off"
+      >
     </div>
 
-    <p id="inventoryStatus" class="inventory-status" role="status" aria-live="polite">Loading published inventory...</p>
-    <section id="propertyGrid" class="property-grid" aria-label="Available properties"></section>
+    <!-- Property filters -->
+
+    <section class="inventory-filters" aria-label="Property filters">
+
+      <label class="filter-field">
+        CITY
+
+        <input
+          id="filterCity"
+          class="inventory-filter"
+          type="text"
+          maxlength="100"
+          placeholder="e.g. Kolkata"
+        >
+      </label>
+
+      <label class="filter-field">
+        STATE
+
+        <input
+          id="filterState"
+          class="inventory-filter"
+          type="text"
+          maxlength="100"
+          placeholder="e.g. West Bengal"
+        >
+      </label>
+
+      <label class="filter-field">
+        PROPERTY TYPE
+
+        <select id="filterType" class="inventory-filter">
+          <option value="">All property types</option>
+          <option value="apartment">Apartment</option>
+          <option value="villa">Villa</option>
+          <option value="plot">Plot</option>
+          <option value="commercial">Commercial</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label class="filter-field">
+        SORT BY
+
+        <select id="filterSort" class="inventory-filter">
+          <option value="newest">Newest first</option>
+          <option value="price_asc">Price: low to high</option>
+          <option value="price_desc">Price: high to low</option>
+          <option value="area_asc">Area: small to large</option>
+          <option value="area_desc">Area: large to small</option>
+        </select>
+      </label>
+
+      <label class="filter-field">
+        MINIMUM BUDGET (₹)
+
+        <input
+          id="minPrice"
+          class="inventory-filter"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="No minimum"
+        >
+      </label>
+
+      <label class="filter-field">
+        MAXIMUM BUDGET (₹)
+
+        <input
+          id="maxPrice"
+          class="inventory-filter"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="No maximum"
+        >
+      </label>
+
+      <label class="filter-field">
+        MINIMUM BEDROOMS
+
+        <input
+          id="minBedrooms"
+          class="inventory-filter"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Any"
+        >
+      </label>
+
+      <label class="filter-field">
+        MAXIMUM BEDROOMS
+
+        <input
+          id="maxBedrooms"
+          class="inventory-filter"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Any"
+        >
+      </label>
+
+      <label class="filter-field">
+        MINIMUM AREA (SQ.FT.)
+
+        <input
+          id="minArea"
+          class="inventory-filter"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="No minimum"
+        >
+      </label>
+
+      <label class="filter-field">
+        MAXIMUM AREA (SQ.FT.)
+
+        <input
+          id="maxArea"
+          class="inventory-filter"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="No maximum"
+        >
+      </label>
+
+      <label class="filter-field">
+        RESULTS PER PAGE
+
+        <select id="pageSize" class="inventory-filter">
+          <option value="12">12 results</option>
+          <option value="24">24 results</option>
+          <option value="48">48 results</option>
+        </select>
+      </label>
+
+      <div class="filter-actions">
+        <button
+          id="resetFilters"
+          class="filter-reset"
+          type="button"
+        >
+          Reset filters
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Search status -->
+
+    <p
+      id="inventoryStatus"
+      class="inventory-status"
+      role="status"
+      aria-live="polite"
+    >
+      Loading published inventory...
+    </p>
+
+    <!-- Property cards -->
+
+    <section
+      id="propertyGrid"
+      class="property-grid"
+      aria-label="Available properties"
+      aria-busy="false"
+    ></section>
+
+    <!-- Pagination -->
+
+    <nav
+      id="pagination"
+      class="pagination-controls"
+      aria-label="Property search pagination"
+      hidden
+    >
+      <button
+        id="previousPage"
+        class="pagination-button"
+        type="button"
+      >
+        Previous
+      </button>
+
+      <span
+        id="pageInfo"
+        class="pagination-info"
+        aria-live="polite"
+      >
+        Page 1 of 1
+      </span>
+
+      <button
+        id="nextPage"
+        class="pagination-button"
+        type="button"
+      >
+        Next
+      </button>
+    </nav>
+
+    <!-- No inventory -->
 
     <section id="emptyState" class="empty-state" hidden>
       <h2>No published properties are currently available.</h2>
-      <p>RealIQ has no listings matching this view right now. Please check again later or return to the homepage. No demonstration listings are being shown as live inventory.</p>
+
+      <p>
+        RealIQ has no listings matching this view right now.
+        Please check again later or return to the homepage.
+        No demonstration listings are being shown as live inventory.
+      </p>
+
       <a class="back-link" href="/">Return to RealIQ homepage</a>
     </section>
-    <p id="noMatches" class="inventory-status" hidden>No published properties match your search.</p>
+
+    <!-- No search matches -->
+
+    <p id="noMatches" class="inventory-status" hidden>
+      No published properties match your search.
+      Try changing or resetting your filters.
+    </p>
+
   </main>
 
   <script>
+    // --------------------------------------------------
+    // DOM ELEMENTS
+    // --------------------------------------------------
+
     const grid = document.getElementById('propertyGrid');
     const statusNode = document.getElementById('inventoryStatus');
     const emptyState = document.getElementById('emptyState');
     const noMatches = document.getElementById('noMatches');
+
     const searchInput = document.getElementById('inventorySearch');
+    const cityInput = document.getElementById('filterCity');
+    const stateInput = document.getElementById('filterState');
+    const typeInput = document.getElementById('filterType');
+    const sortInput = document.getElementById('filterSort');
+
+    const minPriceInput = document.getElementById('minPrice');
+    const maxPriceInput = document.getElementById('maxPrice');
+
+    const minBedroomsInput = document.getElementById('minBedrooms');
+    const maxBedroomsInput = document.getElementById('maxBedrooms');
+
+    const minAreaInput = document.getElementById('minArea');
+    const maxAreaInput = document.getElementById('maxArea');
+
+    const pageSizeInput = document.getElementById('pageSize');
+    const resetButton = document.getElementById('resetFilters');
+
+    const pagination = document.getElementById('pagination');
+    const previousPageButton = document.getElementById('previousPage');
+    const nextPageButton = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+
+    // --------------------------------------------------
+    // SEARCH STATE
+    // --------------------------------------------------
+
     let listings = [];
+    let currentPage = 1;
+    let totalPages = 0;
+    let totalListings = 0;
+
+    let searchTimer = null;
+    let activeController = null;
+    let latestRequestId = 0;
+
+    // --------------------------------------------------
+    // HELPERS
+    // --------------------------------------------------
 
     function safeImageUrl(value) {
       if (!value) return null;
+
       try {
         const parsed = new URL(value, window.location.origin);
-        if (parsed.protocol !== 'https:' && parsed.origin !== window.location.origin) return null;
-        if (parsed.protocol === 'javascript:') return null;
+
+        if (
+          parsed.protocol !== 'https:' &&
+          parsed.origin !== window.location.origin
+        ) {
+          return null;
+        }
+
+        if (parsed.protocol === 'javascript:') {
+          return null;
+        }
+
         return parsed.href;
       } catch {
         return null;
@@ -99,100 +679,491 @@
 
     function addText(parent, tag, className, value) {
       const element = document.createElement(tag);
-      if (className) element.className = className;
+
+      if (className) {
+        element.className = className;
+      }
+
       element.textContent = value;
       parent.appendChild(element);
+
       return element;
     }
 
     function formatPrice(value) {
-      if (value === null || value === undefined) return 'Price on enquiry';
+      if (value === null || value === undefined) {
+        return 'Price on enquiry';
+      }
+
       return new Intl.NumberFormat('en-IN', {
-        style: 'currency', currency: 'INR', maximumFractionDigits: 0
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
       }).format(value);
     }
 
-    function renderListings() {
-      const query = searchInput.value.trim().toLowerCase();
-      const visible = listings.filter((item) =>
-        [item.title, item.property_type, item.city, item.state, item.description]
-          .filter(Boolean).some((value) => String(value).toLowerCase().includes(query))
+    function hasActiveFilters() {
+      return Boolean(
+        searchInput.value.trim() ||
+        cityInput.value.trim() ||
+        stateInput.value.trim() ||
+        typeInput.value ||
+        minPriceInput.value ||
+        maxPriceInput.value ||
+        minBedroomsInput.value ||
+        maxBedroomsInput.value ||
+        minAreaInput.value ||
+        maxAreaInput.value
       );
+    }
 
+    // --------------------------------------------------
+    // BUILD API QUERY
+    // --------------------------------------------------
+
+    function buildSearchParams(page) {
+      const params = new URLSearchParams();
+
+      const values = {
+        q: searchInput.value.trim(),
+        city: cityInput.value.trim(),
+        state: stateInput.value.trim(),
+        property_type: typeInput.value,
+
+        min_price: minPriceInput.value,
+        max_price: maxPriceInput.value,
+
+        min_bedrooms: minBedroomsInput.value,
+        max_bedrooms: maxBedroomsInput.value,
+
+        min_area: minAreaInput.value,
+        max_area: maxAreaInput.value,
+
+        sort: sortInput.value,
+        page: String(page),
+        page_size: pageSizeInput.value
+      };
+
+      for (const [key, value] of Object.entries(values)) {
+        if (value !== '') {
+          params.set(key, value);
+        }
+      }
+
+      return params;
+    }
+
+    // --------------------------------------------------
+    // CLIENT-SIDE FILTER VALIDATION
+    // --------------------------------------------------
+
+    function validateFilterRanges() {
+      const ranges = [
+        {
+          min: minPriceInput.value,
+          max: maxPriceInput.value,
+          label: 'Budget'
+        },
+        {
+          min: minBedroomsInput.value,
+          max: maxBedroomsInput.value,
+          label: 'Bedrooms'
+        },
+        {
+          min: minAreaInput.value,
+          max: maxAreaInput.value,
+          label: 'Area'
+        }
+      ];
+
+      for (const range of ranges) {
+        if (range.min !== '' && range.max !== '') {
+          if (Number(range.min) > Number(range.max)) {
+            return `Minimum ${range.label.toLowerCase()} cannot exceed maximum ${range.label.toLowerCase()}.`;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function showSearchError(message) {
       grid.replaceChildren();
+      grid.setAttribute('aria-busy', 'false');
+
+      pagination.hidden = true;
+      emptyState.hidden = true;
       noMatches.hidden = true;
 
-      for (const item of visible) {
+      statusNode.textContent = message;
+    }
+
+    // --------------------------------------------------
+    // PROPERTY CARD RENDERING
+    // --------------------------------------------------
+
+    function renderListings() {
+      grid.replaceChildren();
+
+      for (const item of listings) {
         const card = document.createElement('article');
         card.className = 'property-card';
 
+        // Property image
+
         const imageUrl = safeImageUrl(item.image_url);
+
         if (imageUrl) {
           const image = document.createElement('img');
+
           image.className = 'property-image';
           image.src = imageUrl;
           image.alt = item.title;
           image.loading = 'lazy';
+
           card.appendChild(image);
         } else {
-          addText(card, 'div', 'property-image-placeholder', 'RealIQ Property');
+          addText(
+            card,
+            'div',
+            'property-image-placeholder',
+            'RealIQ Property'
+          );
         }
+
+        // Property information
 
         const body = document.createElement('div');
         body.className = 'property-body';
-        addText(body, 'div', 'property-type', item.property_type.replaceAll('_', ' '));
+
+        addText(
+          body,
+          'div',
+          'property-type',
+          String(item.property_type || '').replaceAll('_', ' ')
+        );
+
         addText(body, 'h2', '', item.title);
-        addText(body, 'p', 'property-location', `${item.city}, ${item.state}`);
-        addText(body, 'p', 'property-price', formatPrice(item.price_inr));
+
+        addText(
+          body,
+          'p',
+          'property-location',
+          `${item.city}, ${item.state}`
+        );
+
+        addText(
+          body,
+          'p',
+          'property-price',
+          formatPrice(item.price_inr)
+        );
+
+        // Property metadata
 
         const metadata = [];
-        if (item.bedrooms !== null && item.bedrooms !== undefined) {
-          metadata.push(`${item.bedrooms} bedroom${item.bedrooms === 1 ? '' : 's'}`);
-        }
-        if (item.area_sqft) metadata.push(`${item.area_sqft.toLocaleString('en-IN')} sq.ft.`);
-        if (metadata.length) addText(body, 'p', 'property-meta', metadata.join(' ? '));
 
-        if (item.description) addText(body, 'p', 'property-description', item.description);
+        if (item.bedrooms !== null && item.bedrooms !== undefined) {
+          metadata.push(
+            `${item.bedrooms} bedroom${item.bedrooms === 1 ? '' : 's'}`
+          );
+        }
+
+        if (item.area_sqft !== null && item.area_sqft !== undefined) {
+          metadata.push(
+            `${Number(item.area_sqft).toLocaleString('en-IN')} sq.ft.`
+          );
+        }
+
+        if (metadata.length) {
+          addText(body, 'p', 'property-meta', metadata.join(' · '));
+        }
+
+        if (item.description) {
+          addText(
+            body,
+            'p',
+            'property-description',
+            item.description
+          );
+        }
+
+        // Select property
+
         const propertyId = Number(item.id);
+
         if (Number.isSafeInteger(propertyId) && propertyId > 0) {
           const selectButton = document.createElement('button');
+
           selectButton.type = 'button';
           selectButton.className = 'select-property-button';
           selectButton.textContent = 'Select property & continue';
+
           selectButton.addEventListener('click', () => {
-            const params = new URLSearchParams({next: '/buyer', property_id: String(propertyId)});
-            window.location.assign(`/index.html?${params.toString()}#login`);
+            const params = new URLSearchParams({
+              next: '/buyer',
+              property_id: String(propertyId)
+            });
+
+            window.location.assign(
+              `/index.html?${params.toString()}#login`
+            );
           });
+
           body.appendChild(selectButton);
         }
+
         card.appendChild(body);
         grid.appendChild(card);
       }
-
-      noMatches.hidden = visible.length > 0 || listings.length === 0;
-      emptyState.hidden = listings.length !== 0;
-      statusNode.textContent = `${listings.length} published available propert${listings.length === 1 ? 'y' : 'ies'}.`;
     }
 
-    async function loadInventory() {
+    // --------------------------------------------------
+    // UPDATE PAGINATION
+    // --------------------------------------------------
+
+    function updatePagination() {
+      const displayTotalPages = Math.max(totalPages, 1);
+
+      pagination.hidden = totalPages <= 1;
+
+      pageInfo.textContent =
+        `Page ${currentPage} of ${displayTotalPages}`;
+
+      previousPageButton.disabled = currentPage <= 1;
+      nextPageButton.disabled =
+        currentPage >= totalPages;
+    }
+
+    // --------------------------------------------------
+    // UPDATE SEARCH RESULTS
+    // --------------------------------------------------
+
+    function updateResults(result) {
+      listings = result.items;
+
+      currentPage = result.page;
+      totalPages = result.total_pages;
+      totalListings = result.total;
+
+      renderListings();
+      updatePagination();
+
+      grid.setAttribute('aria-busy', 'false');
+
+      const filtered = hasActiveFilters();
+
+      if (totalListings === 0) {
+        statusNode.textContent = filtered
+          ? 'No published properties match your search.'
+          : 'No published properties are currently available.';
+
+        emptyState.hidden = filtered;
+        noMatches.hidden = !filtered;
+
+        return;
+      }
+
+      emptyState.hidden = true;
+      noMatches.hidden = true;
+
+      statusNode.textContent =
+        `${totalListings} published available propert${totalListings === 1 ? 'y' : 'ies'} found. ` +
+        `Showing ${listings.length} on this page.`;
+    }
+
+    // --------------------------------------------------
+    // SERVER-SIDE SEARCH
+    // --------------------------------------------------
+
+    async function loadInventory(page = 1) {
+      clearTimeout(searchTimer);
+
+      const validationError = validateFilterRanges();
+
+      if (validationError) {
+        showSearchError(validationError);
+        return;
+      }
+
+      currentPage = page;
+
+      // Prevent older requests from replacing newer results.
+
+      if (activeController) {
+        activeController.abort();
+      }
+
+      const controller = new AbortController();
+      activeController = controller;
+
+      const requestId = ++latestRequestId;
+
+      const params = buildSearchParams(page);
+
+      grid.setAttribute('aria-busy', 'true');
+      statusNode.textContent = 'Searching published properties...';
+
       try {
-        const response = await fetch('/api/buyer/inventory');
+        const response = await fetch(
+          `/api/buyer/inventory/search?${params.toString()}`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            },
+            signal: controller.signal
+          }
+        );
+
         const result = await response.json().catch(() => null);
-        if (!response.ok || !Array.isArray(result)) {
-          throw new Error('Inventory could not be loaded. Please try again later.');
+
+        if (requestId !== latestRequestId) {
+          return;
         }
-        listings = result;
-        renderListings();
+
+        if (!response.ok) {
+          let message = 'Inventory could not be loaded. Please try again.';
+
+          if (typeof result?.detail === 'string') {
+            message = result.detail;
+          } else if (Array.isArray(result?.detail)) {
+            message = result.detail
+              .map((error) => error.msg || 'Invalid search input.')
+              .join(' ');
+          }
+
+          throw new Error(message);
+        }
+
+        if (
+          !result ||
+          !Array.isArray(result.items) ||
+          !Number.isInteger(result.total) ||
+          !Number.isInteger(result.total_pages)
+        ) {
+          throw new Error(
+            'The inventory server returned an invalid response.'
+          );
+        }
+
+        updateResults(result);
+
       } catch (error) {
-        grid.replaceChildren();
-        emptyState.hidden = true;
-        noMatches.hidden = true;
-        statusNode.textContent = error.message || 'Inventory could not be loaded.';
+        if (error.name === 'AbortError') {
+          return;
+        }
+
+        if (requestId === latestRequestId) {
+          showSearchError(
+            error.message ||
+            'Inventory could not be loaded. Please try again later.'
+          );
+        }
+
+      } finally {
+        if (requestId === latestRequestId) {
+          grid.setAttribute('aria-busy', 'false');
+
+          if (activeController === controller) {
+            activeController = null;
+          }
+        }
       }
     }
 
-    searchInput.addEventListener('input', renderListings);
-    loadInventory();
+    // --------------------------------------------------
+    // DEBOUNCED SEARCH
+    // --------------------------------------------------
+
+    function scheduleSearch() {
+      clearTimeout(searchTimer);
+
+      searchTimer = setTimeout(() => {
+        loadInventory(1);
+      }, 350);
+    }
+
+    // --------------------------------------------------
+    // EVENT LISTENERS
+    // --------------------------------------------------
+
+    // Text and numeric inputs: debounce requests.
+
+    const debouncedInputs = [
+      searchInput,
+      cityInput,
+      stateInput,
+      minPriceInput,
+      maxPriceInput,
+      minBedroomsInput,
+      maxBedroomsInput,
+      minAreaInput,
+      maxAreaInput
+    ];
+
+    debouncedInputs.forEach((input) => {
+      input.addEventListener('input', scheduleSearch);
+    });
+
+    // Dropdowns: execute search immediately.
+
+    [
+      typeInput,
+      sortInput,
+      pageSizeInput
+    ].forEach((input) => {
+      input.addEventListener('change', () => {
+        loadInventory(1);
+      });
+    });
+
+    // Previous page.
+
+    previousPageButton.addEventListener('click', () => {
+      if (currentPage > 1) {
+        loadInventory(currentPage - 1);
+      }
+    });
+
+    // Next page.
+
+    nextPageButton.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        loadInventory(currentPage + 1);
+      }
+    });
+
+    // Reset every search field.
+
+    resetButton.addEventListener('click', () => {
+      searchInput.value = '';
+      cityInput.value = '';
+      stateInput.value = '';
+
+      typeInput.value = '';
+      sortInput.value = 'newest';
+
+      minPriceInput.value = '';
+      maxPriceInput.value = '';
+
+      minBedroomsInput.value = '';
+      maxBedroomsInput.value = '';
+
+      minAreaInput.value = '';
+      maxAreaInput.value = '';
+
+      pageSizeInput.value = '12';
+
+      loadInventory(1);
+    });
+
+    // --------------------------------------------------
+    // INITIAL INVENTORY LOAD
+    // --------------------------------------------------
+
+    loadInventory(1);
   </script>
+
 </body>
 </html>
