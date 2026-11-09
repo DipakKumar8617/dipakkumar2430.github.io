@@ -1,261 +1,797 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Buyer OS | RealIQ</title>
+
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
+
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="/styles.css">
+
   <style>
+
     body{min-height:100vh;background:var(--paper);color:var(--ink)}
+
     .layout{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+
     .sidebar{background:var(--navy-950);color:var(--white);padding:28px 18px;display:flex;flex-direction:column}
+
     .sidebar .logo{color:var(--white);padding:0 12px 28px}
+
     .side-label{font:10px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#b9c3cc;padding:18px 12px 8px}
+
     .side-nav{display:grid;gap:4px}
+
     .side-nav a{display:block;padding:11px 12px;color:#e3e8eb;text-decoration:none;font-size:13px;border-left:2px solid transparent}
+
     .side-nav a.active{border-left-color:var(--brass);background:rgba(255,255,255,.07);color:var(--brass-light)}
+
     .side-nav a:hover{background:rgba(255,255,255,.06)}
+
     .side-bottom{margin-top:auto;padding:24px 12px 0;color:#bdc5cc;font-size:12px;line-height:1.6}
+
     .main{min-width:0;padding:32px clamp(18px,4vw,54px) 60px}
+
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:36px}
+
     .breadcrumb{font:10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.14em;color:var(--slate)}
+
     .user-chip{font-size:12px;color:var(--slate)}
+
     .eyebrow{font:11px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--emerald)}
+
     h1{font-size:clamp(34px,4vw,48px);line-height:1.1;margin:10px 0}
+
     .lead{max-width:670px;color:var(--slate);line-height:1.7}
+
     .profile-banner{margin:26px 0;background:var(--navy-900);color:var(--white);border-radius:12px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
     .profile-banner strong{display:block;font-size:17px;margin-bottom:5px}
+
     .profile-banner p{color:rgba(255,255,255,0.72);font-size:13px;margin:0;line-height:1.6}
+
     .edit-link{padding:11px 15px;border:1px solid var(--brass);color:var(--brass-light);text-decoration:none;font-size:12px;white-space:nowrap}
+
     .section-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin:34px 0 14px}
+
     .section-head h2{font-size:25px;margin:0}
+
     .section-head p{font-size:12px;color:var(--slate);margin:5px 0 0}
+
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+
     .tile{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:20px;min-height:142px;box-shadow:0 12px 26px rgba(16,24,38,0.06);transition:transform .2s ease,box-shadow .2s ease}
+
     .tile-label{font:10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--slate)}
+
     .tile h3{font-size:20px;margin:15px 0 8px}
+
     .tile p{font-size:12px;line-height:1.6;color:var(--slate);margin:0}
+
     .tile .coming{display:inline-block;margin-top:14px;font:10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.07em;color:var(--navy-950);background:var(--brass-light);padding:6px 8px;border-radius:2px}
+
     .journey{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+
     .journey-step{border:1px solid var(--line);border-top:2px solid var(--paper-dim);border-radius:4px;background:var(--white);padding:14px}
+
     .journey-step.current{border-top-color:var(--emerald)}
+
     .journey-step span{font:10px 'IBM Plex Mono',monospace;color:var(--slate)}
+
     .journey-step strong{display:block;font-size:13px;margin-top:8px}
+
     .next-panel{margin-top:20px;background:var(--white);border:1px solid var(--line);border-radius:12px;padding:22px;box-shadow:0 12px 26px rgba(16,24,38,0.06)}
+
     .next-panel h3{font-size:22px;margin:0 0 8px}
+
     .next-panel p{font-size:13px;color:var(--slate);line-height:1.7;margin:0;max-width:760px}
+
     .footer-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+
     .action-link{display:inline-block;padding:12px 16px;background:var(--brass);color:var(--navy-950);border-radius:2px;text-decoration:none;font-size:12px;font-weight:600;transition:background .2s}
+
     .action-secondary{display:inline-block;padding:12px 16px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:12px}
+
     .status{color:var(--slate);font-size:13px}
+
     .selected-property-panel{margin:20px 0 28px;background:var(--navy-900);color:var(--white);border-radius:12px;padding:22px 24px}
+
     .selected-property-panel .eyebrow{color:var(--brass-light)}
+
     .selected-property-panel h2{font-size:24px;line-height:1.3;margin:10px 0}
+
     .selected-property-panel p{font-size:13px;line-height:1.7;color:rgba(255,255,255,.8);margin:6px 0}
+
     .selected-property-panel a{display:inline-block;margin-top:10px;color:var(--brass-light);font-size:12px;text-decoration:underline}
+
     @media(max-width:930px){.layout{grid-template-columns:200px minmax(0,1fr)}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.journey{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
     @media(max-width:650px){.layout{grid-template-columns:1fr}.sidebar{padding:15px 16px}.sidebar .logo{padding:0 8px 10px}.side-label,.side-bottom{display:none}.side-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.side-nav a{padding:8px}.main{padding-top:23px}.grid{grid-template-columns:1fr}.topbar{margin-bottom:25px}.journey{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
   </style>
-</head>
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <a href="/" class="logo" style="text-decoration:none"><span class="mark">?</span>RealIQ</a>
-      <div class="side-label">Buyer workspace</div>
-      <nav class="side-nav" aria-label="Buyer navigation">
-        <a href="/buyer/dashboard" class="active" aria-current="page">Overview</a>
-        <a href="#discovery">Discover property</a>
-        <a href="/inventory">Live inventory</a>
-        <a href="#journey">My buying journey</a>
-        <a href="/buyer/onboarding">My profile</a>
-      </nav>
-      <div class="side-bottom">One buyer workspace for Indian residents and overseas buyers.</div>
-    </aside>
 
-    <main class="main">
-      <div class="topbar">
-        <div class="breadcrumb">RealIQ / Buyer OS / Overview</div>
-        <div class="user-chip" id="userLabel">Your account</div>
-      </div>
 
-      <section class="selected-property-panel" id="selectedPropertyPanel" hidden aria-live="polite">
-        <div class="eyebrow">Selected property</div>
-        <h2 id="selectedPropertyTitle">Checking property availability?</h2>
-        <p id="selectedPropertyDetails"></p>
-        <p>Your selection is not a reservation or purchase. No booking has been made.</p>
-        <a href="/inventory">Back to available inventory</a>
-      </section>
 
-      <div class="eyebrow" id="buyerTypeLabel">Your buyer workspace</div>
-      <h1>Welcome, <span id="buyerName">Buyer</span>.</h1>
-      <p class="lead">Your property journey, organized around your goals. Your profile is saved; discovery, live inventory and transaction tools will connect here as their services are implemented.</p>
+  <style>
 
-      <section class="profile-banner">
-        <div>
-          <strong id="profileSummary">Buyer profile saved</strong>
-          <p id="profileDetails">Loading your saved preferences?</p>
-        </div>
-        <a class="edit-link" href="/buyer/onboarding">Edit profile ?</a>
-      </section>
+    .saved-searches-panel, .recently-viewed-section {
 
-      <div class="section-head" id="discovery">
-        <div>
-          <h2>Your workspace</h2>
-          <p>Tools are shown by module; unconnected services are clearly marked.</p>
-        </div>
-      </div>
+      margin: 28px 0;
 
-      <div class="grid">
-        <article class="tile">
-          <div class="tile-label">01 / Discover</div>
-          <h3>Property discovery</h3>
-          <p>Search and filter projects by city, budget, type, configuration and possession.</p>
-          <span class="coming">Next phase &middot; Not connected</span>
-        </article>
-        <article class="tile" id="inventory">
-          <div class="tile-label">02 / Inventory</div>
-          <h3>Available units</h3>
-          <p>The shared inventory service will supply current unit status and price details.</p>
-          <span class="coming">Next phase &middot; No live feed yet</span>
-        </article>
-        <article class="tile">
-          <div class="tile-label">03 / Shortlist</div>
-          <h3>Saved properties</h3>
-          <p>Shortlists and comparison will be linked to your buyer account.</p>
-          <span class="coming">Next phase &middot; Not connected</span>
-        </article>
-        <article class="tile">
-          <div class="tile-label">04 / Site visits</div>
-          <h3>Visits &amp; tours</h3>
-          <p>Track on-site visits, remote tours and confirmed appointments in one place.</p>
-          <span class="coming">Next phase &middot; Not connected</span>
-        </article>
-        <article class="tile">
-          <div class="tile-label">05 / Finance</div>
-          <h3>Finance &amp; payments</h3>
-          <p>Affordability, finance partner workflows and payment milestones belong here.</p>
-          <span class="coming">Next phase &middot; Not connected</span>
-        </article>
-        <article class="tile">
-          <div class="tile-label">06 / Documents</div>
-          <h3>Document centre</h3>
-          <p>Buyer, property and booking documents will be managed with access controls.</p>
-          <span class="coming">Next phase &middot; Not connected</span>
-        </article>
-      </div>
+      padding: 20px;
 
-      <div class="section-head" id="journey">
-        <div>
-          <h2>My buying journey</h2>
-          <p>Only your completed onboarding step is active at this stage.</p>
-        </div>
-      </div>
-      <div class="journey">
-        <div class="journey-step current"><span>STEP 01</span><strong>Buyer profile</strong></div>
-        <div class="journey-step"><span>STEP 02</span><strong>Discover</strong></div>
-        <div class="journey-step"><span>STEP 03</span><strong>Shortlist / visit</strong></div>
-        <div class="journey-step"><span>STEP 04</span><strong>Select a unit</strong></div>
-      </div>
+      border: 1px solid #e3e7ed;
 
-      <section class="next-panel">
-        <h3>Your next step</h3>
-        <p>Your profile is saved. The next development milestone is connected property discovery and a shared inventory API. No property availability, prices or booking statuses are being simulated here.</p>
-        <div class="footer-actions">
-          <a class="action-link" href="/buyer/onboarding">Review my profile</a>
-          <a class="action-secondary" href="/dashboard">Back to main dashboard</a>
-        </div>
-      </section>
-      <p class="status" id="pageStatus" role="status" aria-live="polite"></p>
-    </main>
-  </div>
+      border-radius: 12px;
 
-  <script>
-    async function loadBuyerWorkspace() {
-      const status = document.getElementById('pageStatus');
-      try {
-        const [sessionResponse, profileResponse] = await Promise.all([
-          fetch('/api/session'),
-          fetch('/api/buyer/profile')
-        ]);
+      background: #fff;
 
-        if (sessionResponse.status === 401 || profileResponse.status === 401) {
-          window.location.replace('/index.html#login');
-          return;
-        }
-        if (!sessionResponse.ok || !profileResponse.ok) {
-          throw new Error('We could not load your account. Please try again.');
-        }
-
-        const sessionData = await sessionResponse.json();
-        const profileData = await profileResponse.json();
-        const user = sessionData.user || {};
-        const profile = profileData.profile;
-
-        if (!sessionData.authenticated) {
-          window.location.replace('/index.html#login');
-          return;
-        }
-        if (!profile) {
-          const params = new URLSearchParams({next: '/buyer'});
-          const propertyId = new URLSearchParams(window.location.search).get('property_id');
-          if (/^[1-9][0-9]{0,9}$/.test(propertyId || '')) params.set('property_id', propertyId);
-          window.location.replace(`/buyer/onboarding?${params.toString().replace(/^next=\%2Fbuyer&?/, '')}`);
-          return;
-        }
-
-        const isNri = profile.buyer_type === 'nri_overseas';
-        document.getElementById('buyerTypeLabel').textContent =
-          isNri ? 'NRI / Overseas Buyer OS' : 'Indian Resident Buyer OS';
-        document.getElementById('buyerName').textContent =
-          profile.full_name || user.fullName || 'Buyer';
-        document.getElementById('userLabel').textContent =
-          user.email || user.phone || 'Signed-in account';
-        document.getElementById('profileSummary').textContent =
-          isNri ? 'NRI / Overseas profile saved' : 'Indian Resident profile saved';
-
-        const details = [
-          profile.preferred_city ? 'Preferred city: ' + profile.preferred_city : null,
-          isNri && profile.country_of_residence ? 'Residence: ' + profile.country_of_residence : null,
-          isNri && profile.timezone ? 'Time zone: ' + profile.timezone : null,
-          profile.purchase_purpose ? 'Purpose: ' + profile.purchase_purpose.replaceAll('_', ' ') : null
-        ].filter(Boolean);
-        document.getElementById('profileDetails').textContent =
-          details.length ? details.join(' | ') : 'Your profile is saved. Add preferences whenever you are ready.';
-
-        const selectionParams = new URLSearchParams(window.location.search);
-        const selectedPropertyId = selectionParams.get('property_id');
-        if (/^[1-9][0-9]{0,9}$/.test(selectedPropertyId || '')) {
-          const panel = document.getElementById('selectedPropertyPanel');
-          const title = document.getElementById('selectedPropertyTitle');
-          const propertyDetails = document.getElementById('selectedPropertyDetails');
-          panel.hidden = false;
-          try {
-            const inventoryResponse = await fetch('/api/buyer/inventory');
-            const inventory = await inventoryResponse.json().catch(() => null);
-            if (!inventoryResponse.ok || !Array.isArray(inventory)) throw new Error('Could not verify this property.');
-            const selected = inventory.find((item) => String(item.id) === selectedPropertyId);
-            if (!selected) {
-              title.textContent = 'This property is no longer available';
-              propertyDetails.textContent = 'It may have been sold, reserved, unpublished, or removed. Choose another property from inventory.';
-            } else {
-              title.textContent = selected.title;
-              const price = selected.price_inr == null ? 'Price on enquiry' : new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0}).format(selected.price_inr);
-              propertyDetails.textContent = `${selected.city}, ${selected.state} ? ${price}`;
-            }
-          } catch (error) {
-            title.textContent = 'Selected property could not be verified';
-            propertyDetails.textContent = error.message || 'Please check available inventory.';
-          }
-        }
-      } catch (error) {
-        status.textContent = error.message || 'Could not load your Buyer OS.';
-      }
     }
 
+    .saved-searches-heading {
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      flex-wrap: wrap;
+
+      gap: 12px;
+
+    }
+
+    .saved-searches-heading p, .saved-search-card p,
+
+    .recently-viewed-card p { color: #64748b; }
+
+    .saved-searches-list, .recently-viewed-grid {
+
+      display: grid;
+
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+
+      gap: 12px;
+
+    }
+
+    .saved-search-card, .recently-viewed-card {
+
+      padding: 16px;
+
+      border: 1px solid #e3e7ed;
+
+      border-radius: 10px;
+
+      min-width: 0;
+
+    }
+
+    .saved-search-actions {
+
+      display: flex;
+
+      gap: 8px;
+
+      margin-top: 12px;
+
+    }
+
+    .saved-search-actions button {
+
+      padding: 8px 12px;
+
+      cursor: pointer;
+
+    }
+
+    .saved-search-delete { color: #a12b2b; }
+
+    .recently-viewed-link {
+
+      display: block;
+
+      color: inherit;
+
+      text-decoration: none;
+
+    }
+
+    .recently-viewed-link:hover { text-decoration: underline; }
+
+    .recently-viewed-price { font-weight: 700; }
+
+    @media (max-width: 600px) {
+
+      .saved-searches-panel, .recently-viewed-section { padding: 14px; }
+
+    }
+
+  </style>
+
+
+
+</head>
+
+<body>
+
+  <div class="layout">
+
+    <aside class="sidebar">
+
+      <a href="/" class="logo" style="text-decoration:none"><span class="mark">?</span>RealIQ</a>
+
+      <div class="side-label">Buyer workspace</div>
+
+      <nav class="side-nav" aria-label="Buyer navigation">
+
+        <a href="/buyer/dashboard" class="active" aria-current="page">Overview</a>
+
+        <a href="#discovery">Discover property</a>
+
+        <a href="/inventory">Live inventory</a>
+
+        <a href="#journey">My buying journey</a>
+
+        <a href="/buyer/onboarding">My profile</a>
+
+      </nav>
+
+      <div class="side-bottom">One buyer workspace for Indian residents and overseas buyers.</div>
+
+    </aside>
+
+
+
+    <main class="main">
+
+      <div class="topbar">
+
+        <div class="breadcrumb">RealIQ / Buyer OS / Overview</div>
+
+        <div class="user-chip" id="userLabel">Your account</div>
+
+      </div>
+
+
+
+      <section class="selected-property-panel" id="selectedPropertyPanel" hidden aria-live="polite">
+
+        <div class="eyebrow">Selected property</div>
+
+        <h2 id="selectedPropertyTitle">Checking property availability?</h2>
+
+        <p id="selectedPropertyDetails"></p>
+
+        <p>Your selection is not a reservation or purchase. No booking has been made.</p>
+
+        <a href="/inventory">Back to available inventory</a>
+
+      </section>
+
+
+
+      <div class="eyebrow" id="buyerTypeLabel">Your buyer workspace</div>
+
+      <h1>Welcome, <span id="buyerName">Buyer</span>.</h1>
+
+      <p class="lead">Your property journey, organized around your goals. Your profile is saved; discovery, live inventory and transaction tools will connect here as their services are implemented.</p>
+
+
+
+      <section class="profile-banner">
+
+        <div>
+
+          <strong id="profileSummary">Buyer profile saved</strong>
+
+          <p id="profileDetails">Loading your saved preferences?</p>
+
+        </div>
+
+        <a class="edit-link" href="/buyer/onboarding">Edit profile ?</a>
+
+      </section>
+
+
+
+      <div class="section-head" id="discovery">
+
+        <div>
+
+          <h2>Your workspace</h2>
+
+          <p>Tools are shown by module; unconnected services are clearly marked.</p>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="grid">
+
+        <article class="tile">
+
+          <div class="tile-label">01 / Discover</div>
+
+          <h3>Property discovery</h3>
+
+          <p>Search and filter projects by city, budget, type, configuration and possession.</p>
+
+          <span class="coming">Next phase &middot; Not connected</span>
+
+        </article>
+
+        <article class="tile" id="inventory">
+
+          <div class="tile-label">02 / Inventory</div>
+
+          <h3>Available units</h3>
+
+          <p>The shared inventory service will supply current unit status and price details.</p>
+
+          <span class="coming">Next phase &middot; No live feed yet</span>
+
+        </article>
+
+        <article class="tile">
+
+          <div class="tile-label">03 / Shortlist</div>
+
+          <h3>Saved properties</h3>
+
+          <p>Shortlists and comparison will be linked to your buyer account.</p>
+
+          <span class="coming">Next phase &middot; Not connected</span>
+
+        </article>
+
+        <article class="tile">
+
+          <div class="tile-label">04 / Site visits</div>
+
+          <h3>Visits &amp; tours</h3>
+
+          <p>Track on-site visits, remote tours and confirmed appointments in one place.</p>
+
+          <span class="coming">Next phase &middot; Not connected</span>
+
+        </article>
+
+        <article class="tile">
+
+          <div class="tile-label">05 / Finance</div>
+
+          <h3>Finance &amp; payments</h3>
+
+          <p>Affordability, finance partner workflows and payment milestones belong here.</p>
+
+          <span class="coming">Next phase &middot; Not connected</span>
+
+        </article>
+
+        <article class="tile">
+
+          <div class="tile-label">06 / Documents</div>
+
+          <h3>Document centre</h3>
+
+          <p>Buyer, property and booking documents will be managed with access controls.</p>
+
+          <span class="coming">Next phase &middot; Not connected</span>
+
+        </article>
+
+      </div>
+
+
+
+      <div class="section-head" id="journey">
+
+        <div>
+
+          <h2>My buying journey</h2>
+
+          <p>Only your completed onboarding step is active at this stage.</p>
+
+        </div>
+
+      </div>
+
+      <div class="journey">
+
+        <div class="journey-step current"><span>STEP 01</span><strong>Buyer profile</strong></div>
+
+        <div class="journey-step"><span>STEP 02</span><strong>Discover</strong></div>
+
+        <div class="journey-step"><span>STEP 03</span><strong>Shortlist / visit</strong></div>
+
+        <div class="journey-step"><span>STEP 04</span><strong>Select a unit</strong></div>
+
+      </div>
+
+
+
+      <section class="next-panel">
+
+        <h3>Your next step</h3>
+
+        <p>Your profile is saved. The next development milestone is connected property discovery and a shared inventory API. No property availability, prices or booking statuses are being simulated here.</p>
+
+        <div class="footer-actions">
+
+          <a class="action-link" href="/buyer/onboarding">Review my profile</a>
+
+          <a class="action-secondary" href="/dashboard">Back to main dashboard</a>
+
+        </div>
+
+      </section>
+
+      <p class="status" id="pageStatus" role="status" aria-live="polite"></p>
+
+
+
+      <section class="recently-viewed-section" aria-labelledby="recentlyViewedHeading">
+
+        <div class="section-head">
+
+          <div>
+
+            <h2 id="recentlyViewedHeading">Recently viewed</h2>
+
+            <p>Properties you have opened recently.</p>
+
+          </div>
+
+          <a href="/inventory">Explore inventory</a>
+
+        </div>
+
+        <p id="recentlyViewedStatus" class="status" role="status" aria-live="polite">Loading recently viewed properties...</p>
+
+        <div id="recentlyViewedList" class="recently-viewed-grid"></div>
+
+      </section>
+
+
+
+    </main>
+
+  </div>
+
+
+
+  <script>
+
+
+
+    // --------------------------------------------------
+
+    // RECENTLY VIEWED PROPERTIES
+
+    // --------------------------------------------------
+
+
+
+    async function loadRecentlyViewed() {
+
+      const status = document.getElementById('recentlyViewedStatus');
+
+      const list = document.getElementById('recentlyViewedList');
+
+      list.replaceChildren();
+
+
+
+      try {
+
+        const response = await fetch('/api/buyer/recently-viewed?limit=8', {
+
+          headers: { Accept: 'application/json' }
+
+        });
+
+
+
+        if (!response.ok) {
+
+          status.textContent = response.status === 401
+
+            ? 'Sign in as a buyer to view your history.'
+
+            : 'Recently viewed properties are currently unavailable.';
+
+          return;
+
+        }
+
+
+
+        const records = await response.json();
+
+
+
+        if (!Array.isArray(records) || records.length === 0) {
+
+          status.textContent = 'You have not viewed any properties yet. Explore the live inventory to get started.';
+
+          return;
+
+        }
+
+
+
+        status.textContent = `${records.length} recently viewed propert${records.length === 1 ? 'y' : 'ies'}.`;
+
+
+
+        records.forEach((record) => {
+
+          const property = record.property;
+
+          if (!property || !Number.isInteger(property.id)) return;
+
+
+
+          const card = document.createElement('article');
+
+          card.className = 'recently-viewed-card';
+
+
+
+          const link = document.createElement('a');
+
+          link.href = `/property/${property.id}`;
+
+          link.className = 'recently-viewed-link';
+
+
+
+          const title = document.createElement('h3');
+
+          title.textContent = property.title || 'Property';
+
+          link.appendChild(title);
+
+
+
+          const location = document.createElement('p');
+
+          location.textContent = [property.city, property.state].filter(Boolean).join(', ') || 'Location unavailable';
+
+          link.appendChild(location);
+
+
+
+          const price = document.createElement('p');
+
+          price.className = 'recently-viewed-price';
+
+          price.textContent = property.price_inr == null
+
+            ? 'Price on enquiry'
+
+            : new Intl.NumberFormat('en-IN', {
+
+                style: 'currency',
+
+                currency: 'INR',
+
+                maximumFractionDigits: 0
+
+              }).format(property.price_inr);
+
+          link.appendChild(price);
+
+
+
+          card.appendChild(link);
+
+          list.appendChild(card);
+
+        });
+
+
+
+        if (!list.children.length) {
+
+          status.textContent = 'No recently viewed property records are available.';
+
+        }
+
+      } catch {
+
+        status.textContent = 'Unable to load recently viewed properties. Please try again later.';
+
+      }
+
+    }
+
+
+
+    async function loadBuyerWorkspace() {
+
+      const status = document.getElementById('pageStatus');
+
+      try {
+
+        const [sessionResponse, profileResponse] = await Promise.all([
+
+          fetch('/api/session'),
+
+          fetch('/api/buyer/profile')
+
+        ]);
+
+
+
+        if (sessionResponse.status === 401 || profileResponse.status === 401) {
+
+          window.location.replace('/index.html#login');
+
+          return;
+
+        }
+
+        if (!sessionResponse.ok || !profileResponse.ok) {
+
+          throw new Error('We could not load your account. Please try again.');
+
+        }
+
+
+
+        const sessionData = await sessionResponse.json();
+
+        const profileData = await profileResponse.json();
+
+        const user = sessionData.user || {};
+
+        const profile = profileData.profile;
+
+
+
+        if (!sessionData.authenticated) {
+
+          window.location.replace('/index.html#login');
+
+          return;
+
+        }
+
+        if (!profile) {
+
+          const params = new URLSearchParams({next: '/buyer'});
+
+          const propertyId = new URLSearchParams(window.location.search).get('property_id');
+
+          if (/^[1-9][0-9]{0,9}$/.test(propertyId || '')) params.set('property_id', propertyId);
+
+          window.location.replace(`/buyer/onboarding?${params.toString().replace(/^next=\%2Fbuyer&?/, '')}`);
+
+          return;
+
+        }
+
+
+
+        const isNri = profile.buyer_type === 'nri_overseas';
+
+        document.getElementById('buyerTypeLabel').textContent =
+
+          isNri ? 'NRI / Overseas Buyer OS' : 'Indian Resident Buyer OS';
+
+        document.getElementById('buyerName').textContent =
+
+          profile.full_name || user.fullName || 'Buyer';
+
+        document.getElementById('userLabel').textContent =
+
+          user.email || user.phone || 'Signed-in account';
+
+        document.getElementById('profileSummary').textContent =
+
+          isNri ? 'NRI / Overseas profile saved' : 'Indian Resident profile saved';
+
+
+
+        const details = [
+
+          profile.preferred_city ? 'Preferred city: ' + profile.preferred_city : null,
+
+          isNri && profile.country_of_residence ? 'Residence: ' + profile.country_of_residence : null,
+
+          isNri && profile.timezone ? 'Time zone: ' + profile.timezone : null,
+
+          profile.purchase_purpose ? 'Purpose: ' + profile.purchase_purpose.replaceAll('_', ' ') : null
+
+        ].filter(Boolean);
+
+        document.getElementById('profileDetails').textContent =
+
+          details.length ? details.join(' | ') : 'Your profile is saved. Add preferences whenever you are ready.';
+
+
+
+        const selectionParams = new URLSearchParams(window.location.search);
+
+        const selectedPropertyId = selectionParams.get('property_id');
+
+        if (/^[1-9][0-9]{0,9}$/.test(selectedPropertyId || '')) {
+
+          const panel = document.getElementById('selectedPropertyPanel');
+
+          const title = document.getElementById('selectedPropertyTitle');
+
+          const propertyDetails = document.getElementById('selectedPropertyDetails');
+
+          panel.hidden = false;
+
+          try {
+
+            const inventoryResponse = await fetch('/api/buyer/inventory');
+
+            const inventory = await inventoryResponse.json().catch(() => null);
+
+            if (!inventoryResponse.ok || !Array.isArray(inventory)) throw new Error('Could not verify this property.');
+
+            const selected = inventory.find((item) => String(item.id) === selectedPropertyId);
+
+            if (!selected) {
+
+              title.textContent = 'This property is no longer available';
+
+              propertyDetails.textContent = 'It may have been sold, reserved, unpublished, or removed. Choose another property from inventory.';
+
+            } else {
+
+              title.textContent = selected.title;
+
+              const price = selected.price_inr == null ? 'Price on enquiry' : new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0}).format(selected.price_inr);
+
+              propertyDetails.textContent = `${selected.city}, ${selected.state} ? ${price}`;
+
+            }
+
+          } catch (error) {
+
+            title.textContent = 'Selected property could not be verified';
+
+            propertyDetails.textContent = error.message || 'Please check available inventory.';
+
+          }
+
+        }
+
+      } catch (error) {
+
+        status.textContent = error.message || 'Could not load your Buyer OS.';
+
+      }
+
+    }
+
+
+
     loadBuyerWorkspace();
+
+    loadRecentlyViewed();
+
   </script>
+
 </body>
+
 </html>

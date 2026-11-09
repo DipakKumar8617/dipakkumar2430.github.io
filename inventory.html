@@ -326,6 +326,57 @@
       }
     }
   </style>
+
+  <style>
+    .saved-searches-panel, .recently-viewed-section {
+      margin: 28px 0;
+      padding: 20px;
+      border: 1px solid #e3e7ed;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .saved-searches-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .saved-searches-heading p, .saved-search-card p,
+    .recently-viewed-card p { color: #64748b; }
+    .saved-searches-list, .recently-viewed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .saved-search-card, .recently-viewed-card {
+      padding: 16px;
+      border: 1px solid #e3e7ed;
+      border-radius: 10px;
+      min-width: 0;
+    }
+    .saved-search-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .saved-search-actions button {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .saved-search-delete { color: #a12b2b; }
+    .recently-viewed-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .recently-viewed-link:hover { text-decoration: underline; }
+    .recently-viewed-price { font-weight: 700; }
+    @media (max-width: 600px) {
+      .saved-searches-panel, .recently-viewed-section { padding: 14px; }
+    }
+  </style>
+
 </head>
 
 <body>
@@ -602,6 +653,20 @@
       Try changing or resetting your filters.
     </p>
 
+
+    <section class="saved-searches-panel" aria-labelledby="savedSearchesHeading">
+      <div class="saved-searches-heading">
+        <div>
+          <h2 id="savedSearchesHeading">Saved searches</h2>
+          <p>Save your current filters and reuse them later.</p>
+        </div>
+        <button type="button" id="saveCurrentSearch" class="secondary-button">Save current search</button>
+      </div>
+      <p id="savedSearchesStatus" class="inventory-status" role="status" aria-live="polite">Your saved searches will appear here.</p>
+      <div id="savedSearchesList" class="saved-searches-list"></div>
+    </section>
+
+
   </main>
 
   <script>
@@ -718,6 +783,178 @@
     }
 
     // --------------------------------------------------
+
+    // --------------------------------------------------
+    // SAVED SEARCHES
+    // --------------------------------------------------
+
+    const savedSearchesList = document.getElementById('savedSearchesList');
+    const savedSearchesStatus = document.getElementById('savedSearchesStatus');
+    const saveCurrentSearchButton = document.getElementById('saveCurrentSearch');
+
+    function currentSearchCriteria() {
+      const criteria = {};
+      const textFields = {
+        q: searchInput.value,
+        city: cityInput.value,
+        state: stateInput.value
+      };
+      const numericFields = {
+        min_price: minPriceInput.value,
+        max_price: maxPriceInput.value,
+        min_bedrooms: minBedroomsInput.value,
+        max_bedrooms: maxBedroomsInput.value,
+        min_area: minAreaInput.value,
+        max_area: maxAreaInput.value
+      };
+
+      Object.entries(textFields).forEach(([key, value]) => {
+        if (value.trim()) criteria[key] = value.trim();
+      });
+
+      if (typeInput.value) criteria.property_type = typeInput.value;
+
+      Object.entries(numericFields).forEach(([key, value]) => {
+        if (value !== '') criteria[key] = Number(value);
+      });
+
+      if (sortInput.value) criteria.sort = sortInput.value;
+      return criteria;
+    }
+
+    function applySearchCriteria(criteria) {
+      searchInput.value = criteria.q ?? '';
+      cityInput.value = criteria.city ?? '';
+      stateInput.value = criteria.state ?? '';
+      typeInput.value = criteria.property_type ?? '';
+      minPriceInput.value = criteria.min_price ?? '';
+      maxPriceInput.value = criteria.max_price ?? '';
+      minBedroomsInput.value = criteria.min_bedrooms ?? '';
+      maxBedroomsInput.value = criteria.max_bedrooms ?? '';
+      minAreaInput.value = criteria.min_area ?? '';
+      maxAreaInput.value = criteria.max_area ?? '';
+      sortInput.value = criteria.sort ?? 'newest';
+      loadInventory(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function loadSavedSearches() {
+      savedSearchesStatus.textContent = 'Loading saved searches...';
+      savedSearchesList.replaceChildren();
+
+      try {
+        const response = await fetch('/api/buyer/saved-searches', {
+          headers: { Accept: 'application/json' }
+        });
+
+        if (!response.ok) {
+          savedSearchesStatus.textContent = response.status === 401
+            ? 'Sign in as a buyer to save and access searches.'
+            : 'Saved searches are currently unavailable.';
+          return;
+        }
+
+        const searches = await response.json();
+
+        if (!Array.isArray(searches) || searches.length === 0) {
+          savedSearchesStatus.textContent = 'You have no saved searches yet.';
+          return;
+        }
+
+        savedSearchesStatus.textContent = `${searches.length} saved search${searches.length === 1 ? '' : 'es'}.`;
+
+        searches.forEach((search) => {
+          const card = document.createElement('article');
+          card.className = 'saved-search-card';
+
+          const heading = document.createElement('strong');
+          heading.textContent = search.name || 'Untitled search';
+          card.appendChild(heading);
+
+          const details = document.createElement('p');
+          const criteria = search.criteria || {};
+          const summary = Object.entries(criteria)
+            .filter(([, value]) => value !== null && value !== '')
+            .map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`)
+            .join(' ? ');
+          details.textContent = summary || 'All available properties';
+          card.appendChild(details);
+
+          const actions = document.createElement('div');
+          actions.className = 'saved-search-actions';
+
+          const applyButton = document.createElement('button');
+          applyButton.type = 'button';
+          applyButton.textContent = 'Apply';
+          applyButton.addEventListener('click', () => applySearchCriteria(criteria));
+          actions.appendChild(applyButton);
+
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.textContent = 'Delete';
+          deleteButton.className = 'saved-search-delete';
+          deleteButton.addEventListener('click', async () => {
+            deleteButton.disabled = true;
+            try {
+              const result = await fetch(`/api/buyer/saved-searches/${search.id}`, {
+                method: 'DELETE',
+                headers: { Accept: 'application/json' }
+              });
+              if (!result.ok) throw new Error('Delete failed');
+              await loadSavedSearches();
+            } catch {
+              savedSearchesStatus.textContent = 'Unable to delete this saved search. Please try again.';
+              deleteButton.disabled = false;
+            }
+          });
+          actions.appendChild(deleteButton);
+
+          card.appendChild(actions);
+          savedSearchesList.appendChild(card);
+        });
+      } catch {
+        savedSearchesStatus.textContent = 'Unable to load saved searches. Please try again later.';
+      }
+    }
+
+    saveCurrentSearchButton.addEventListener('click', async () => {
+      const name = window.prompt('Give this search a name:');
+      if (name === null) return;
+
+      if (!name.trim()) {
+        savedSearchesStatus.textContent = 'Enter a name before saving your search.';
+        return;
+      }
+
+      saveCurrentSearchButton.disabled = true;
+      try {
+        const response = await fetch('/api/buyer/saved-searches', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            criteria: currentSearchCriteria()
+          })
+        });
+
+        if (response.status === 409) {
+          savedSearchesStatus.textContent = 'A saved search with that name already exists.';
+          return;
+        }
+        if (!response.ok) throw new Error('Save failed');
+
+        savedSearchesStatus.textContent = 'Search saved successfully.';
+        await loadSavedSearches();
+      } catch {
+        savedSearchesStatus.textContent = 'Unable to save this search. Please try again.';
+      } finally {
+        saveCurrentSearchButton.disabled = false;
+      }
+    });
+
     // BUILD API QUERY
     // --------------------------------------------------
 
@@ -1155,6 +1392,7 @@ if (Number.isSafeInteger(propertyId) && propertyId > 0) {
     // INITIAL INVENTORY LOAD
     // --------------------------------------------------
 
+    loadSavedSearches();
     loadInventory(1);
   </script>
 
