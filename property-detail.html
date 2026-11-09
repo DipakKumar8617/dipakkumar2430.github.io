@@ -719,6 +719,20 @@
 
         renderProperty(result);
 
+        // Record only a property already verified as published and available.
+        // Tracking must never prevent the property page from rendering.
+        fetch(`/api/buyer/recently-viewed/${propertyId}`, {
+          method: 'POST',
+          headers: { Accept: 'application/json' }
+        }).then((response) => {
+          if (!response.ok) {
+            console.warn('Recently viewed tracking was not accepted.');
+          }
+        }).catch(() => {
+          console.warn('Recently viewed tracking is temporarily unavailable.');
+        });
+
+
       } catch (error) {
         showError(
           'Unable to load property',

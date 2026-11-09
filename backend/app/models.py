@@ -6,7 +6,9 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -213,6 +215,96 @@ class PropertyShortlist(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+class SavedPropertySearch(Base):
+    """A named set of property discovery filters owned by a buyer."""
+
+    __tablename__ = "saved_property_searches"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "name",
+            name="uq_saved_property_search_account_name",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_saved_property_searches_account_id_user_accounts",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    criteria: Mapped[dict[str, object]] = mapped_column(
+        JSON,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class RecentlyViewedProperty(Base):
+    """A buyer's most recent successful view of a published property."""
+
+    __tablename__ = "recently_viewed_properties"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "property_listing_id",
+            name="uq_recently_viewed_account_listing",
+        ),
+        Index(
+            "ix_recently_viewed_account_viewed_at",
+            "account_id",
+            "viewed_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_recently_viewed_account_id_user_accounts",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    property_listing_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_listings.id",
+            name="fk_recently_viewed_listing_id_property_listings",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    viewed_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.now(),
