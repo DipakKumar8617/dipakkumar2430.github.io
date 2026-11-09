@@ -309,3 +309,72 @@ class RecentlyViewedProperty(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+
+class BuyerSiteVisit(Base):
+    """A site-visit request owned by an authenticated buyer."""
+
+    __tablename__ = "buyer_site_visits"
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('requested', 'confirmed', 'completed', 'cancelled', 'rejected')",
+            name="ck_buyer_site_visits_status",
+        ),
+        Index(
+            "ix_buyer_site_visits_account_scheduled_at",
+            "account_id",
+            "scheduled_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_buyer_site_visits_account_id_user_accounts",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    property_listing_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_listings.id",
+            name="fk_buyer_site_visits_listing_id_property_listings",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    scheduled_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+    )
+
+    message: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="requested",
+        server_default="requested",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
