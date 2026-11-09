@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .database import get_db
 from .models import AuthIdentity, UserAccount
+from .security import hash_password, verify_password
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
@@ -79,39 +80,10 @@ class ManualBuyerLogin(BaseModel):
     password: str = Field(min_length=1, max_length=128)
     property_id: int | None = Field(default=None, ge=1, le=9999999999)
 
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    digest = hashlib.scrypt(
-        password.encode("utf-8"),
-        salt=salt,
-        n=2**14,
-        r=8,
-        p=1,
-        dklen=64,
-    )
-    return f"scrypt${salt.hex()}${digest.hex()}"
-
-
-def verify_password(password: str, encoded: str) -> bool:
-    try:
-        scheme, salt_hex, digest_hex = encoded.split("$", 2)
-        if scheme != "scrypt":
-            return False
-        salt = bytes.fromhex(salt_hex)
-        expected = bytes.fromhex(digest_hex)
-        actual = hashlib.scrypt(
-            password.encode("utf-8"),
-            salt=salt,
-            n=2**14,
-            r=8,
-            p=1,
-            dklen=len(expected),
-        )
-        return hmac.compare_digest(actual, expected)
-    except (ValueError, TypeError):
-        return False
-
+class StaffLogin(BaseModel):
+    identifier: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
+    role: Literal["Channel Partner", "Developer", "Admin"]
 
 def normalize_phone(value: str) -> str:
     phone = "".join(char for char in value if char.isdigit())
@@ -468,6 +440,74 @@ def buyer_password_login(
         redirect += f"?property_id={payload.property_id}"
     return {"success": True, "user": user, "redirect": redirect}
 
+@app.post("/api/login")
+def staff_password_login(
+    payload: StaffLogin,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Authenticate an existing, provisioned staff account."""
+
+    email = payload.identifier.strip().lower()
+    account = db.scalar(
+        select(UserAccount).where(UserAccount.email == email)
+    )
+
+    if (
+        account is None
+        or str(account.role or "").strip().casefold()
+        not in {"admin", "developer", "channel partner"}
+        or not account.password_hash
+        or not verify_password(payload.password, account.password_hash)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password.",
+        )
+
+    role_names = {
+        "admin": "Admin",
+        "developer": "Developer",
+        "channel partner": "Channel Partner",
+    }
+    database_role = str(account.role).strip().casefold()
+    canonical_role = role_names[database_role]
+
+    if payload.role != canonical_role:
+        raise HTTPException(
+            status_code=403,
+            detail="Selected role does not match this account.",
+        )
+
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == "local_password",
+            AuthIdentity.provider_subject == str(account.id),
+        )
+    )
+
+    if identity is None or identity.account_id != account.id:
+        raise HTTPException(
+            status_code=401,
+            detail="Staff account is not provisioned for password login.",
+        )
+
+    user = {
+        "account_id": account.id,
+        "provider": "local_password",
+        "providerId": str(account.id),
+        "email": account.email,
+        "phone": account.phone,
+        "fullName": account.full_name,
+        "role": canonical_role,
+    }
+    set_session(request, user)
+
+    return {
+        "success": True,
+        "user": user,
+        "redirect": "/dashboard",
+    }
 
 @app.post("/api/auth/google")
 def google_login(
