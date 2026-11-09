@@ -238,6 +238,79 @@
       border-radius: 4px;
     }
 
+    .site-visit-panel {
+      margin-top: 30px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--white);
+    }
+
+    .site-visit-panel h2 {
+      margin-bottom: 8px;
+      font: 500 25px 'Fraunces', serif;
+    }
+
+    .site-visit-panel > p {
+      margin-bottom: 18px;
+      color: var(--slate);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .site-visit-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .site-visit-form label {
+      display: grid;
+      gap: 7px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .site-visit-form input,
+    .site-visit-form textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+      font: 13px 'Inter', sans-serif;
+    }
+
+    .site-visit-form textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .site-visit-form button {
+      min-height: 46px;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 2px;
+      background: var(--navy-950);
+      color: #fff;
+      font: 600 12px 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    .site-visit-form button:disabled {
+      cursor: wait;
+      opacity: .6;
+    }
+
+    .site-visit-status {
+      margin-top: 12px;
+      color: var(--slate);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+
     .detail-state h1 {
       margin-bottom: 12px;
       font: 500 32px 'Fraunces', serif;
@@ -431,6 +504,24 @@
             </a>
 
           </div>
+
+          <section class="site-visit-panel" aria-labelledby="siteVisitHeading">
+            <h2 id="siteVisitHeading">Request a site visit</h2>
+            <p>Choose a preferred date and time. This submits a request; the appointment is not confirmed until the relevant team responds.</p>
+
+            <form id="siteVisitForm" class="site-visit-form">
+              <label for="siteVisitDate">Preferred date and time</label>
+              <input id="siteVisitDate" name="scheduled_at" type="datetime-local" required>
+
+              <label for="siteVisitMessage">Message (optional)</label>
+              <textarea id="siteVisitMessage" name="message" maxlength="1000" placeholder="Share any details that may help arrange your visit."></textarea>
+
+              <button id="siteVisitSubmit" type="submit">Submit visit request</button>
+            </form>
+
+            <p id="siteVisitStatus" class="site-visit-status" role="status" aria-live="polite"></p>
+            <a id="siteVisitSignIn" href="/index.html#login" hidden>Sign in to request a visit</a>
+          </section>
 
         </div>
 
@@ -659,6 +750,92 @@
       errorState.hidden = true;
       propertyDetails.hidden = false;
     }
+
+    // --------------------------------------------------
+    // BUYER SITE VISIT REQUEST
+    // --------------------------------------------------
+
+    const siteVisitForm = document.getElementById('siteVisitForm');
+    const siteVisitDate = document.getElementById('siteVisitDate');
+    const siteVisitMessage = document.getElementById('siteVisitMessage');
+    const siteVisitSubmit = document.getElementById('siteVisitSubmit');
+    const siteVisitStatus = document.getElementById('siteVisitStatus');
+    const siteVisitSignIn = document.getElementById('siteVisitSignIn');
+
+    function updateSiteVisitMinimum() {
+      const current = new Date();
+      const localCurrent = new Date(
+        current.getTime() - current.getTimezoneOffset() * 60000
+      );
+      siteVisitDate.min = localCurrent.toISOString().slice(0, 16);
+    }
+
+    updateSiteVisitMinimum();
+
+    siteVisitForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const propertyId = getPropertyId();
+      const localValue = siteVisitDate.value;
+
+      if (!propertyId || !localValue) {
+        siteVisitStatus.textContent = 'Choose a valid date and time.';
+        return;
+      }
+
+      const scheduledDate = new Date(localValue);
+
+      if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+        siteVisitStatus.textContent = 'Choose a future date and time.';
+        return;
+      }
+
+      const message = siteVisitMessage.value.trim();
+      siteVisitSubmit.disabled = true;
+      siteVisitStatus.textContent = 'Submitting your visit request...';
+      siteVisitSignIn.hidden = true;
+
+      try {
+        const response = await fetch(`/api/buyer/site-visits/${propertyId}`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            scheduled_at: scheduledDate.toISOString(),
+            message: message || null
+          })
+        });
+
+        const result = await response.json().catch(() => null);
+
+        if (response.status === 401) {
+          siteVisitStatus.textContent = 'Sign in as a buyer before requesting a site visit.';
+          siteVisitSignIn.hidden = false;
+          return;
+        }
+
+        if (!response.ok) {
+          const detailMessage =
+            typeof result?.detail === 'string' ? result.detail : null;
+          throw new Error(
+            detailMessage || 'Your visit request could not be submitted. Please try again.'
+          );
+        }
+
+        siteVisitStatus.textContent =
+          `Your site visit request was submitted. Current status: ${result?.status || 'requested'}. The appointment is not confirmed yet.`;
+        siteVisitForm.reset();
+        updateSiteVisitMinimum();
+
+      } catch (error) {
+        siteVisitStatus.textContent =
+          error.message || 'The visit service is temporarily unavailable.';
+      } finally {
+        siteVisitSubmit.disabled = false;
+      }
+    });
 
     // --------------------------------------------------
     // LOAD PROPERTY FROM BACKEND

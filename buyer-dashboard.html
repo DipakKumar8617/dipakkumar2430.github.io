@@ -212,6 +212,77 @@
 
     .recently-viewed-price { font-weight: 700; }
 
+    .site-visits-section {
+      margin: 28px 0;
+      padding: 20px;
+      border: 1px solid #e3e7ed;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .site-visits-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .site-visit-card {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid #e3e7ed;
+      border-radius: 10px;
+    }
+
+    .site-visit-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .site-visit-card p {
+      margin: 7px 0;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .site-visit-card a {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    .site-visit-status-pill {
+      display: inline-block;
+      margin: 5px 0 8px;
+      padding: 5px 8px;
+      border: 1px solid #d8dee8;
+      border-radius: 3px;
+      color: #334155;
+      font: 10px 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .site-visit-cancel {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border: 1px solid #a12b2b;
+      border-radius: 3px;
+      background: #fff;
+      color: #a12b2b;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .site-visit-cancel:disabled {
+      cursor: wait;
+      opacity: .6;
+    }
+
+    @media (max-width: 600px) {
+      .site-visits-section { padding: 14px; }
+    }
+
     @media (max-width: 600px) {
 
       .saved-searches-panel, .recently-viewed-section { padding: 14px; }
@@ -466,7 +537,17 @@
 
       </section>
 
-
+      <section class="site-visits-section" aria-labelledby="siteVisitsHeading">
+        <div class="section-head">
+          <div>
+            <h2 id="siteVisitsHeading">My site visits</h2>
+            <p>Track your submitted visit requests and appointment status.</p>
+          </div>
+          <a href="/inventory">Explore properties</a>
+        </div>
+        <p id="siteVisitsStatus" class="status" role="status" aria-live="polite">Loading your site visits...</p>
+        <div id="siteVisitsList" class="site-visits-list"></div>
+      </section>
 
     </main>
 
@@ -621,6 +702,144 @@
     }
 
 
+
+    // --------------------------------------------------
+    // BUYER SITE VISITS
+    // --------------------------------------------------
+
+    async function loadBuyerSiteVisits() {
+      const status = document.getElementById('siteVisitsStatus');
+      const list = document.getElementById('siteVisitsList');
+      list.replaceChildren();
+
+      try {
+        const response = await fetch('/api/buyer/site-visits', {
+          headers: { Accept: 'application/json' }
+        });
+
+        if (response.status === 401) {
+          status.textContent = 'Sign in as a buyer to view your site visits.';
+          return;
+        }
+
+        if (!response.ok) {
+          status.textContent = 'Your site visits are currently unavailable.';
+          return;
+        }
+
+        const records = await response.json();
+
+        if (!Array.isArray(records) || records.length === 0) {
+          status.textContent = 'You have not submitted any site visit requests yet.';
+          return;
+        }
+
+        records.forEach((record) => {
+          if (!record || !Number.isInteger(record.id)) return;
+
+          const card = document.createElement('article');
+          card.className = 'site-visit-card';
+
+          const property = record.property;
+          const title = document.createElement('h3');
+          title.textContent = property?.title || 'Property details unavailable';
+
+          if (property && Number.isInteger(property.id)) {
+            const link = document.createElement('a');
+            link.href = `/property/${property.id}`;
+            link.textContent = title.textContent;
+            title.replaceChildren(link);
+          }
+          card.appendChild(title);
+
+          const location = document.createElement('p');
+          location.textContent = property
+            ? [property.city, property.state].filter(Boolean).join(', ')
+            : 'Property location unavailable';
+          card.appendChild(location);
+
+          const appointment = document.createElement('p');
+          const appointmentDate = new Date(record.scheduled_at);
+          appointment.textContent = Number.isNaN(appointmentDate.getTime())
+            ? 'Appointment time unavailable'
+            : `Preferred: ${new Intl.DateTimeFormat('en-IN', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+              }).format(appointmentDate)}`;
+          card.appendChild(appointment);
+
+          const statusPill = document.createElement('span');
+          statusPill.className = 'site-visit-status-pill';
+          const allowedStatuses = [
+            'requested', 'confirmed', 'completed', 'cancelled', 'rejected'
+          ];
+          const visitStatus = allowedStatuses.includes(record.status)
+            ? record.status
+            : 'unknown';
+          statusPill.textContent = visitStatus;
+          card.appendChild(statusPill);
+
+          if (typeof record.message === 'string' && record.message.trim()) {
+            const message = document.createElement('p');
+            message.textContent = `Your message: ${record.message}`;
+            card.appendChild(message);
+          }
+
+          if (['requested', 'confirmed'].includes(visitStatus)) {
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.className = 'site-visit-cancel';
+            cancelButton.textContent = 'Cancel request';
+
+            cancelButton.addEventListener('click', async () => {
+              if (!window.confirm('Cancel this site visit request?')) return;
+
+              cancelButton.disabled = true;
+              cancelButton.textContent = 'Cancelling...';
+
+              try {
+                const cancelResponse = await fetch(
+                  `/api/buyer/site-visits/${record.id}/cancel`,
+                  {
+                    method: 'PATCH',
+                    headers: { Accept: 'application/json' }
+                  }
+                );
+
+                const cancelResult = await cancelResponse.json().catch(() => null);
+
+                if (!cancelResponse.ok) {
+                  const detailMessage =
+                    typeof cancelResult?.detail === 'string'
+                      ? cancelResult.detail
+                      : 'This visit could not be cancelled.';
+                  throw new Error(detailMessage);
+                }
+
+                await loadBuyerSiteVisits();
+
+              } catch (error) {
+                cancelButton.disabled = false;
+                cancelButton.textContent = 'Cancel request';
+                status.textContent =
+                  error.message || 'Unable to cancel this visit.';
+              }
+            });
+
+            card.appendChild(cancelButton);
+          }
+
+          list.appendChild(card);
+        });
+
+        status.textContent = list.children.length
+          ? `${list.children.length} site visit request${list.children.length === 1 ? '' : 's'}.`
+          : 'No site visit records are available.';
+
+      } catch {
+        status.textContent = 'Unable to load site visits. Please try again later.';
+      }
+    }
 
     async function loadBuyerWorkspace() {
 
@@ -789,6 +1008,8 @@
     loadBuyerWorkspace();
 
     loadRecentlyViewed();
+
+    loadBuyerSiteVisits();
 
   </script>
 
