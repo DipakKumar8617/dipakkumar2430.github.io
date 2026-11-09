@@ -1,0 +1,576 @@
+import hashlib
+import re
+import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, aliased
+
+from .database import get_db
+from .models import AuthIdentity, StaffAuditLog, StaffInvitation, UserAccount
+from .security import hash_password
+
+
+admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
+invitation_router = APIRouter(
+    prefix="/api/staff-invitations",
+    tags=["staff invitations"],
+)
+
+INVITATION_TTL_HOURS = 24
+STAFF_ROLES = {"developer", "channel partner"}
+
+
+def utc_now_naive() -> datetime:
+    """Return UTC as a naive datetime for the existing database convention."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+class StaffInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=5, max_length=254)
+    role: Literal["developer", "channel partner"]
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+            raise ValueError("Enter a valid email address.")
+        return value
+
+
+class StaffInvitationToken(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=32, max_length=128)
+
+
+class StaffInvitationAccept(StaffInvitationToken):
+    full_name: str = Field(min_length=2, max_length=160)
+    password: str = Field(min_length=12, max_length=128)
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_full_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 2:
+            raise ValueError("Enter your full name.")
+        return value
+
+
+def require_admin(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> UserAccount:
+    """Resolve the session to its canonical database identity and require Admin."""
+
+    user = request.session.get("user")
+    if not isinstance(user, dict):
+        raise HTTPException(status_code=401, detail="Login required.")
+
+    provider = user.get("provider")
+
+    if provider == "google":
+        subject = user.get("providerId")
+    elif provider == "local_otp":
+        subject = user.get("phone")
+    elif provider == "local_password":
+        subject = user.get("providerId")
+    else:
+        subject = None
+
+    if not isinstance(subject, str) or not subject.strip():
+        raise HTTPException(status_code=401, detail="Valid account identity required.")
+
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == provider,
+            AuthIdentity.provider_subject == subject,
+        )
+    )
+
+    if identity is None:
+        raise HTTPException(status_code=401, detail="Account identity is not linked.")
+
+    session_account_id = user.get("account_id")
+    if (
+        session_account_id is None
+        or str(session_account_id) != str(identity.account_id)
+    ):
+        raise HTTPException(status_code=401, detail="Session identity mismatch.")
+
+    account = db.get(UserAccount, identity.account_id)
+    if account is None:
+        raise HTTPException(status_code=401, detail="Account not found.")
+
+    if not account.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="This staff account is deactivated.",
+        )
+
+    if str(account.role or "").strip().casefold() != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    user["account_id"] = account.id
+    user["role"] = "Admin"
+    request.session["user"] = user
+
+    return account
+
+
+def invitation_status(invitation: StaffInvitation, now: datetime) -> str:
+    if invitation.accepted_at is not None:
+        return "accepted"
+    if invitation.revoked_at is not None:
+        return "revoked"
+    if invitation.expires_at <= now:
+        return "expired"
+    return "pending"
+
+
+def invitation_is_usable(
+    invitation: StaffInvitation,
+    now: datetime,
+) -> bool:
+    return (
+        invitation.accepted_at is None
+        and invitation.revoked_at is None
+        and invitation.expires_at > now
+    )
+
+
+@admin_router.get("/summary")
+def admin_summary(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    now = utc_now_naive()
+
+    developer_count = db.scalar(
+        select(func.count(UserAccount.id)).where(
+            func.lower(UserAccount.role) == "developer"
+        )
+    ) or 0
+
+    partner_count = db.scalar(
+        select(func.count(UserAccount.id)).where(
+            func.lower(UserAccount.role) == "channel partner"
+        )
+    ) or 0
+
+    pending_count = db.scalar(
+        select(func.count(StaffInvitation.id)).where(
+            StaffInvitation.accepted_at.is_(None),
+            StaffInvitation.revoked_at.is_(None),
+            StaffInvitation.expires_at > now,
+        )
+    ) or 0
+
+    return {
+        "developers": developer_count,
+        "channel_partners": partner_count,
+        "pending_invitations": pending_count,
+    }
+
+
+@admin_router.get("/staff")
+def list_staff(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    accounts = db.scalars(
+        select(UserAccount)
+        .where(func.lower(UserAccount.role).in_(STAFF_ROLES))
+        .order_by(UserAccount.created_at.desc(), UserAccount.id.desc())
+    ).all()
+
+    return {
+        "items": [
+            {
+                "id": account.id,
+                "full_name": account.full_name,
+                "email": account.email,
+                "role": account.role,
+                "is_active": bool(account.is_active),
+                "created_at": account.created_at,
+            }
+            for account in accounts
+        ]
+    }
+
+
+@admin_router.get("/audit-logs")
+def list_staff_audit_logs(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    actor = aliased(UserAccount)
+    target = aliased(UserAccount)
+
+    rows = db.execute(
+        select(
+            StaffAuditLog,
+            actor.full_name,
+            actor.email,
+            target.full_name,
+            target.email,
+        )
+        .join(actor, actor.id == StaffAuditLog.actor_account_id)
+        .outerjoin(target, target.id == StaffAuditLog.target_account_id)
+        .order_by(
+            StaffAuditLog.created_at.desc(),
+            StaffAuditLog.id.desc(),
+        )
+        .limit(200)
+    ).all()
+
+    return {
+        "items": [
+            {
+                "id": log.id,
+                "action": log.action,
+                "actor_account_id": log.actor_account_id,
+                "actor_name": actor_name,
+                "actor_email": actor_email,
+                "target_account_id": log.target_account_id,
+                "target_name": target_name,
+                "target_email": target_email,
+                "invitation_id": log.invitation_id,
+                "details": log.details,
+                "created_at": log.created_at,
+            }
+            for (
+                log,
+                actor_name,
+                actor_email,
+                target_name,
+                target_email,
+            ) in rows
+        ]
+    }
+
+
+@admin_router.get("/invitations")
+def list_invitations(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    now = utc_now_naive()
+
+    invitations = db.scalars(
+        select(StaffInvitation)
+        .order_by(StaffInvitation.created_at.desc(), StaffInvitation.id.desc())
+        .limit(100)
+    ).all()
+
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "email": item.email,
+                "role": item.role,
+                "status": invitation_status(item, now),
+                "created_at": item.created_at,
+                "expires_at": item.expires_at,
+                "accepted_at": item.accepted_at,
+                "revoked_at": item.revoked_at,
+            }
+            for item in invitations
+        ]
+    }
+
+
+@admin_router.post("/invitations", status_code=201)
+def create_invitation(
+    payload: StaffInvitationCreate,
+    request: Request,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    email = payload.email
+    now = utc_now_naive()
+
+    existing_account = db.scalar(
+        select(UserAccount.id).where(func.lower(UserAccount.email) == email)
+    )
+    if existing_account is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists.",
+        )
+
+    existing_invitation = db.scalar(
+        select(StaffInvitation.id).where(
+            func.lower(StaffInvitation.email) == email,
+            StaffInvitation.accepted_at.is_(None),
+            StaffInvitation.revoked_at.is_(None),
+            StaffInvitation.expires_at > now,
+        )
+    )
+    if existing_invitation is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="A pending invitation already exists for this email.",
+        )
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    expires_at = now + timedelta(hours=INVITATION_TTL_HOURS)
+
+    invitation = StaffInvitation(
+        email=email,
+        role=payload.role,
+        token_hash=token_hash,
+        invited_by_account_id=admin.id,
+        expires_at=expires_at,
+    )
+    db.add(invitation)
+
+    try:
+        db.flush()
+        db.add(
+            StaffAuditLog(
+                actor_account_id=admin.id,
+                invitation_id=invitation.id,
+                action="staff.invitation_created",
+                details={
+                    "email": email,
+                    "role": payload.role,
+                },
+            )
+        )
+        db.commit()
+        db.refresh(invitation)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="The invitation could not be created because the email or token conflicts with another record.",
+        )
+
+    return {
+        "id": invitation.id,
+        "email": invitation.email,
+        "role": invitation.role,
+        "expires_at": invitation.expires_at,
+        "invite_path": f"/staff-invitation#token={raw_token}",
+    }
+
+
+@admin_router.post("/invitations/{invitation_id}/revoke")
+def revoke_invitation(
+    invitation_id: int,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    invitation = db.scalar(
+        select(StaffInvitation)
+        .where(StaffInvitation.id == invitation_id)
+        .with_for_update()
+    )
+
+    if invitation is None:
+        raise HTTPException(status_code=404, detail="Invitation not found.")
+
+    now = utc_now_naive()
+    if not invitation_is_usable(invitation, now):
+        raise HTTPException(
+            status_code=409,
+            detail="Only pending, unexpired invitations can be revoked.",
+        )
+
+    invitation.revoked_at = now
+    db.add(
+        StaffAuditLog(
+            actor_account_id=admin.id,
+            invitation_id=invitation.id,
+            action="staff.invitation_revoked",
+            details={
+                "email": invitation.email,
+                "role": invitation.role,
+            },
+        )
+    )
+    db.commit()
+
+    return {"revoked": True, "invitation_id": invitation.id}
+
+
+@invitation_router.post("/inspect")
+def inspect_invitation(
+    payload: StaffInvitationToken,
+    db: Session = Depends(get_db),
+):
+    token_hash = hashlib.sha256(payload.token.encode("utf-8")).hexdigest()
+    invitation = db.scalar(
+        select(StaffInvitation).where(
+            StaffInvitation.token_hash == token_hash
+        )
+    )
+
+    if invitation is None or not invitation_is_usable(
+        invitation, utc_now_naive()
+    ):
+        raise HTTPException(
+            status_code=410,
+            detail="This invitation is invalid, expired, revoked, or already used.",
+        )
+
+    return {
+        "email": invitation.email,
+        "role": invitation.role,
+        "expires_at": invitation.expires_at,
+    }
+
+
+@invitation_router.post("/accept", status_code=201)
+def accept_invitation(
+    payload: StaffInvitationAccept,
+    db: Session = Depends(get_db),
+):
+    token_hash = hashlib.sha256(payload.token.encode("utf-8")).hexdigest()
+
+    invitation = db.scalar(
+        select(StaffInvitation)
+        .where(StaffInvitation.token_hash == token_hash)
+        .with_for_update()
+    )
+
+    if invitation is None or not invitation_is_usable(
+        invitation, utc_now_naive()
+    ):
+        raise HTTPException(
+            status_code=410,
+            detail="This invitation is invalid, expired, revoked, or already used.",
+        )
+
+    existing_account = db.scalar(
+        select(UserAccount.id).where(
+            func.lower(UserAccount.email) == invitation.email.lower()
+        )
+    )
+    if existing_account is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists. Contact the administrator.",
+        )
+
+    account = UserAccount(
+        full_name=payload.full_name,
+        email=invitation.email,
+        password_hash=hash_password(payload.password),
+        role=invitation.role,
+    )
+    db.add(account)
+
+    try:
+        db.flush()
+
+        db.add(
+            AuthIdentity(
+                account_id=account.id,
+                provider="local_password",
+                provider_subject=str(account.id),
+            )
+        )
+
+        invitation.accepted_at = utc_now_naive()
+        db.add(
+            StaffAuditLog(
+                actor_account_id=account.id,
+                target_account_id=account.id,
+                invitation_id=invitation.id,
+                action="staff.invitation_accepted",
+                details={
+                    "role": account.role,
+                    "invited_by_account_id": invitation.invited_by_account_id,
+                },
+            )
+        )
+        db.commit()
+        db.refresh(account)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="The account could not be created because the email or sign-in identity already exists.",
+        )
+
+    return {
+        "success": True,
+        "message": "Your staff account has been created. You can now sign in.",
+        "account_id": account.id,
+        "role": account.role,
+        "redirect": "/index.html#login",
+    }
+
+
+
+def _set_staff_active(
+    account_id: int,
+    active: bool,
+    admin: UserAccount,
+    db: Session,
+):
+    target = db.scalar(
+        select(UserAccount)
+        .where(UserAccount.id == account_id)
+        .with_for_update()
+    )
+
+    if (
+        target is None
+        or str(target.role or "").strip().casefold() not in STAFF_ROLES
+    ):
+        raise HTTPException(status_code=404, detail="Staff account not found.")
+
+    if bool(target.is_active) == active:
+        return {
+            "account_id": target.id,
+            "is_active": active,
+            "changed": False,
+        }
+
+    target.is_active = active
+
+    db.add(
+        StaffAuditLog(
+            actor_account_id=admin.id,
+            target_account_id=target.id,
+            action="staff.activated" if active else "staff.deactivated",
+            details={"role": target.role},
+        )
+    )
+
+    db.commit()
+
+    return {
+        "account_id": target.id,
+        "is_active": active,
+        "changed": True,
+    }
+
+
+@admin_router.post("/staff/{account_id}/deactivate")
+def deactivate_staff(
+    account_id: int,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return _set_staff_active(account_id, False, admin, db)
+
+
+@admin_router.post("/staff/{account_id}/activate")
+def activate_staff(
+    account_id: int,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return _set_staff_active(account_id, True, admin, db)

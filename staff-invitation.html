@@ -1,0 +1,323 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Accept Staff Invitation | RealIQ</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:#0a121e;
+      --navy2:#16273d;
+      --brass:#c6a15b;
+      --paper:#f4f5f2;
+      --white:#fff;
+      --ink:#101826;
+      --slate:#64748b;
+      --line:rgba(16,24,38,.12);
+      --green:#1e5c4a;
+      --red:#9b3c35;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:24px;
+      background:var(--paper);
+      color:var(--ink);
+      font-family:Inter,sans-serif;
+    }
+    .card {
+      width:min(100%,480px);
+      background:var(--white);
+      border:1px solid var(--line);
+      border-radius:5px;
+      box-shadow:0 22px 65px rgba(10,18,30,.08);
+      overflow:hidden;
+    }
+    .top {
+      background:var(--navy);
+      color:var(--white);
+      padding:25px 30px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .mark {
+      width:34px;
+      height:34px;
+      display:grid;
+      place-items:center;
+      border:1px solid var(--brass);
+      color:var(--brass);
+      font:11px "IBM Plex Mono",monospace;
+    }
+    .brand { font:600 23px Fraunces,serif; }
+    .content { padding:34px 32px 32px; }
+    .eyebrow {
+      color:var(--green);
+      font:10px "IBM Plex Mono",monospace;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      margin-bottom:12px;
+    }
+    h1 {
+      font:500 32px/1.15 Fraunces,serif;
+      letter-spacing:-.02em;
+    }
+    .intro {
+      color:var(--slate);
+      font-size:13px;
+      line-height:1.65;
+      margin-top:12px;
+    }
+    .invite-details {
+      margin:24px 0;
+      padding:15px 16px;
+      background:#faf9f5;
+      border:1px solid #e9e2d4;
+      border-radius:3px;
+    }
+    .detail-label {
+      color:var(--slate);
+      font:9px "IBM Plex Mono",monospace;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+    }
+    .detail-value {
+      font-size:13px;
+      font-weight:600;
+      margin:5px 0 13px;
+      overflow-wrap:anywhere;
+    }
+    .detail-value:last-child { margin-bottom:0; }
+    .field { margin-top:17px; }
+    label {
+      display:block;
+      font-size:10px;
+      font-weight:700;
+      color:var(--slate);
+      margin-bottom:8px;
+      letter-spacing:.04em;
+    }
+    input {
+      width:100%;
+      height:46px;
+      padding:0 13px;
+      border:1px solid #d8dde2;
+      border-radius:3px;
+      outline:none;
+      color:var(--ink);
+      font:13px Inter,sans-serif;
+    }
+    input:focus { border-color:var(--brass); box-shadow:0 0 0 2px rgba(198,161,91,.14); }
+    .hint { color:var(--slate); font-size:10px; margin-top:7px; }
+    .submit {
+      width:100%;
+      height:46px;
+      margin-top:23px;
+      border:0;
+      border-radius:3px;
+      background:var(--navy);
+      color:var(--white);
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .submit:hover { background:var(--navy2); }
+    .submit:disabled { opacity:.55; cursor:not-allowed; }
+    .notice {
+      display:none;
+      padding:13px 14px;
+      border-radius:3px;
+      margin-top:18px;
+      font-size:11px;
+      line-height:1.6;
+    }
+    .notice.show { display:block; }
+    .notice.error { background:#fff1ef; color:var(--red); border:1px solid #efd8d3; }
+    .notice.success { background:#edf6f0; color:var(--green); border:1px solid #d4e9da; }
+    .notice.info { display:block; background:#f4f5f2; color:var(--slate); border:1px solid var(--line); }
+    .footer {
+      padding:16px 24px;
+      border-top:1px solid var(--line);
+      text-align:center;
+      color:var(--slate);
+      font:9px "IBM Plex Mono",monospace;
+      letter-spacing:.05em;
+    }
+    .hidden { display:none !important; }
+    @media(max-width:520px) {
+      .content { padding:28px 21px; }
+      .top { padding:20px 22px; }
+      h1 { font-size:29px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <header class="top">
+      <span class="mark">RIQ</span>
+      <span class="brand">RealIQ</span>
+    </header>
+
+    <div class="content">
+      <div class="eyebrow">Team onboarding</div>
+      <h1 id="pageTitle">Accept your invitation</h1>
+      <p class="intro" id="introText">Verify your invitation and create your secure staff account.</p>
+
+      <div id="loadingNotice" class="notice info" role="status">Verifying your invitation…</div>
+
+      <section id="invitationDetails" class="invite-details hidden">
+        <div class="detail-label">Invited email</div>
+        <div class="detail-value" id="invitedEmail">—</div>
+        <div class="detail-label">Assigned role</div>
+        <div class="detail-value" id="invitedRole">—</div>
+      </section>
+
+      <form id="acceptForm" class="hidden">
+        <div class="field">
+          <label for="fullName">FULL NAME</label>
+          <input id="fullName" name="full_name" type="text" minlength="2" maxlength="160" autocomplete="name" required>
+        </div>
+
+        <div class="field">
+          <label for="password">CREATE PASSWORD</label>
+          <input id="password" name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+          <p class="hint">Use at least 12 characters. Your password is not shared with the administrator.</p>
+        </div>
+
+        <div class="field">
+          <label for="confirmPassword">CONFIRM PASSWORD</label>
+          <input id="confirmPassword" name="confirm_password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+        </div>
+
+        <button class="submit" id="acceptButton" type="submit">Create staff account</button>
+      </form>
+
+      <div id="resultNotice" class="notice" role="status" aria-live="polite"></div>
+    </div>
+
+    <footer class="footer">SECURE STAFF INVITATION · REALIQ</footer>
+  </main>
+
+<script>
+  const byId = (id) => document.getElementById(id);
+  let invitationToken = null;
+  let invitationValid = false;
+
+  function showResult(message, type) {
+    const notice = byId('resultNotice');
+    notice.textContent = message;
+    notice.className = `notice show ${type}`;
+  }
+
+  async function api(url, body) {
+    const response = await fetch(url, {
+      method:'POST',
+      credentials:'same-origin',
+      cache:'no-store',
+      headers:{'Content-Type':'application/json'},
+      referrerPolicy:'no-referrer',
+      body:JSON.stringify(body)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || `Request failed (${response.status}).`);
+    }
+    return data;
+  }
+
+  async function inspectInvitation() {
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    invitationToken = fragment.get('token');
+
+    // Remove the one-time token from browser history after reading it.
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (!invitationToken || invitationToken.length < 32 || invitationToken.length > 128) {
+      byId('loadingNotice').classList.add('hidden');
+      showResult('This invitation link is missing a valid token. Ask your administrator for a new invitation.', 'error');
+      return;
+    }
+
+    try {
+      const data = await api('/api/staff-invitations/inspect', {
+        token:invitationToken
+      });
+
+      invitationValid = true;
+      byId('loadingNotice').classList.add('hidden');
+      byId('invitationDetails').classList.remove('hidden');
+      byId('acceptForm').classList.remove('hidden');
+      byId('invitedEmail').textContent = data.email;
+      byId('invitedRole').textContent =
+        data.role === 'channel partner' ? 'Channel Partner' : 'Developer';
+    } catch (error) {
+      byId('loadingNotice').classList.add('hidden');
+      byId('pageTitle').textContent = 'Invitation unavailable';
+      byId('introText').textContent = 'This invitation cannot be used.';
+      showResult(error.message, 'error');
+    }
+  }
+
+  byId('acceptForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!invitationValid || !invitationToken) return;
+
+    const password = byId('password').value;
+    const confirmation = byId('confirmPassword').value;
+
+    if (password !== confirmation) {
+      showResult('The passwords do not match.', 'error');
+      return;
+    }
+
+    if (password.length < 12 || password.length > 128) {
+      showResult('Your password must contain between 12 and 128 characters.', 'error');
+      return;
+    }
+
+    const button = byId('acceptButton');
+    button.disabled = true;
+    button.textContent = 'Creating account…';
+
+    try {
+      const result = await api('/api/staff-invitations/accept', {
+        token:invitationToken,
+        full_name:byId('fullName').value,
+        password
+      });
+
+      invitationValid = false;
+      invitationToken = null;
+      byId('acceptForm').classList.add('hidden');
+      byId('pageTitle').textContent = 'Your account is ready';
+      byId('introText').textContent = 'Your RealIQ staff account has been created successfully.';
+      showResult('Account created. You can now sign in using your email, password, and assigned role.', 'success');
+
+      byId('resultNotice').appendChild(document.createElement('br'));
+      const link = document.createElement('a');
+      link.href = '/index.html#login';
+      link.textContent = 'Go to staff login';
+      link.style.fontWeight = '700';
+      link.style.textDecoration = 'underline';
+      byId('resultNotice').appendChild(link);
+    } catch (error) {
+      showResult(error.message, 'error');
+      button.disabled = false;
+      button.textContent = 'Create staff account';
+    }
+  });
+
+  inspectInvitation();
+</script>
+</body>
+</html>
