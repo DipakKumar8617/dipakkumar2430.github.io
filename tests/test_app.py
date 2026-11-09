@@ -209,3 +209,118 @@ def test_staff_authorization_rejects_mismatched_session_account_id(client):
             assert False, "Mismatched account ID must not receive access."
         except HTTPException as exc:
             assert exc.status_code == 401
+
+
+def _create_staff_password_account(
+    role,
+    email="staff-login@example.test",
+    create_identity=True,
+):
+    password = "StrongTestPass123!"
+
+    with Session(engine) as db:
+        account = UserAccount(
+            full_name="Test Staff",
+            email=email,
+            phone="919876543299",
+            password_hash=main.hash_password(password),
+            role=role,
+        )
+        db.add(account)
+        db.flush()
+
+        if create_identity:
+            db.add(
+                AuthIdentity(
+                    account_id=account.id,
+                    provider="local_password",
+                    provider_subject=str(account.id),
+                )
+            )
+
+        db.commit()
+        return account.id, password
+
+
+def test_staff_password_login_success(client):
+    _create_staff_password_account("developer")
+
+    response = client.post(
+        "/api/login",
+        json={
+            "identifier": "STAFF-LOGIN@example.test",
+            "password": "StrongTestPass123!",
+            "role": "Developer",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["redirect"] == "/dashboard"
+    assert data["user"]["role"] == "Developer"
+    assert data["user"]["provider"] == "local_password"
+    assert data["user"]["account_id"] is not None
+
+
+def test_staff_password_login_rejects_buyer(client):
+    _create_staff_password_account("buyer")
+
+    response = client.post(
+        "/api/login",
+        json={
+            "identifier": "staff-login@example.test",
+            "password": "StrongTestPass123!",
+            "role": "Developer",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_staff_password_login_rejects_wrong_password(client):
+    _create_staff_password_account("admin")
+
+    response = client.post(
+        "/api/login",
+        json={
+            "identifier": "staff-login@example.test",
+            "password": "WrongPassword123!",
+            "role": "Admin",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_staff_password_login_rejects_role_mismatch(client):
+    _create_staff_password_account("developer")
+
+    response = client.post(
+        "/api/login",
+        json={
+            "identifier": "staff-login@example.test",
+            "password": "StrongTestPass123!",
+            "role": "Admin",
+        },
+    )
+
+    assert response.status_code == 403
+
+
+def test_staff_password_login_requires_provisioned_identity(client):
+    _create_staff_password_account(
+        "admin",
+        create_identity=False,
+    )
+
+    response = client.post(
+        "/api/login",
+        json={
+            "identifier": "staff-login@example.test",
+            "password": "StrongTestPass123!",
+            "role": "Admin",
+        },
+    )
+
+    assert response.status_code == 401
