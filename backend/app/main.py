@@ -126,6 +126,92 @@ def set_session(request: Request, user: dict) -> None:
     request.session["authenticated_at"] = int(time.time())
 
 
+def authenticated_staff_account(
+    request: Request,
+    db: Session,
+) -> UserAccount:
+    """Authenticate staff using the canonical database identity."""
+
+    user = request.session.get("user")
+
+    if not isinstance(user, dict):
+        raise HTTPException(status_code=401, detail="Login required.")
+
+    if str(user.get("role", "")).strip().casefold() == "unassigned":
+        raise HTTPException(
+            status_code=403,
+            detail="An approved staff role is required.",
+        )
+
+    provider = user.get("provider")
+
+    if provider == "google":
+        subject = user.get("providerId")
+    elif provider == "local_otp":
+        subject = user.get("phone")
+    elif provider == "local_password":
+        subject = user.get("providerId")
+    else:
+        subject = None
+
+    if not isinstance(subject, str) or not subject.strip():
+        raise HTTPException(
+            status_code=401,
+            detail="Valid account identity required.",
+        )
+
+    identity = db.scalar(
+        select(AuthIdentity).where(
+            AuthIdentity.provider == provider,
+            AuthIdentity.provider_subject == subject,
+        )
+    )
+
+    if identity is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Account identity is not linked. Please sign in again.",
+        )
+
+    session_account_id = user.get("account_id")
+
+    if (
+        session_account_id is None
+        or str(session_account_id) != str(identity.account_id)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Session identity does not match the account.",
+        )
+
+    account = db.get(UserAccount, identity.account_id)
+
+    if account is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Account not found. Please sign in again.",
+        )
+
+    database_role = str(account.role or "").strip().casefold()
+    role_names = {
+        "developer": "Developer",
+        "channel partner": "Channel Partner",
+        "admin": "Admin",
+    }
+
+    if database_role not in role_names:
+        raise HTTPException(
+            status_code=403,
+            detail="An approved staff role is required.",
+        )
+
+    user["account_id"] = account.id
+    user["role"] = role_names[database_role]
+    request.session["user"] = user
+
+    return account
+
+
 @app.get("/")
 def home():
     return FileResponse(PROJECT_ROOT / "index.html")
@@ -200,18 +286,16 @@ def property_detail_page(property_id: int):
     return FileResponse(PROJECT_ROOT / "property-detail.html")
 
 @app.get("/dashboard")
-def dashboard(request: Request):
+def dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+):
     user = request.session.get("user")
+
     if not isinstance(user, dict):
         return RedirectResponse("/index.html#login", status_code=303)
 
-    role = user.get("role")
-    allowed_staff_roles = {"developer", "channel partner", "admin"}
-    if not isinstance(role, str) or role.strip().casefold() not in allowed_staff_roles:
-        raise HTTPException(
-            status_code=403,
-            detail="An approved staff role is required.",
-        )
+    authenticated_staff_account(request, db)
 
     return FileResponse(PROJECT_ROOT / "dashboard.html")
 
