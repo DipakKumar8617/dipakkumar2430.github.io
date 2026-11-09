@@ -148,6 +148,9 @@ class UserAccount(Base):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(30), nullable=False, default="buyer")
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="1"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
@@ -377,4 +380,117 @@ class BuyerSiteVisit(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+
+class StaffInvitation(Base):
+    """One-time invitation for a Developer or Channel Partner account."""
+
+    __tablename__ = "staff_invitations"
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('developer', 'channel partner')",
+            name="ck_staff_invitations_role",
+        ),
+        CheckConstraint(
+            "accepted_at IS NULL OR revoked_at IS NULL",
+            name="ck_staff_invitations_terminal_state",
+        ),
+        UniqueConstraint(
+            "token_hash",
+            name="uq_staff_invitations_token_hash",
+        ),
+        Index(
+            "ix_staff_invitations_email_created_at",
+            "email",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    role: Mapped[str] = mapped_column(String(30), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    invited_by_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_staff_invitations_invited_by_user_accounts",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+
+class StaffAuditLog(Base):
+    """Append-only record of administrative staff-management actions."""
+
+    __tablename__ = "staff_audit_logs"
+
+    __table_args__ = (
+        Index("ix_staff_audit_logs_created_at", "created_at"),
+        Index(
+            "ix_staff_audit_logs_target_created_at",
+            "target_account_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    actor_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_staff_audit_logs_actor_user_accounts",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    target_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_staff_audit_logs_target_user_accounts",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    invitation_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "staff_invitations.id",
+            name="fk_staff_audit_logs_invitation_staff_invitations",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    details: Mapped[dict[str, object] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
     )

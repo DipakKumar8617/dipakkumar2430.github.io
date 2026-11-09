@@ -23,9 +23,12 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import AuthIdentity, UserAccount
 from .security import hash_password, verify_password
+from .admin import admin_router, invitation_router
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
+app.include_router(admin_router)
+app.include_router(invitation_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 if not SESSION_SECRET:
@@ -164,6 +167,12 @@ def authenticated_staff_account(
             detail="Account not found. Please sign in again.",
         )
 
+    if not account.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="This staff account is deactivated. Contact an administrator.",
+        )
+
     database_role = str(account.role or "").strip().casefold()
     role_names = {
         "developer": "Developer",
@@ -267,9 +276,27 @@ def dashboard(
     if not isinstance(user, dict):
         return RedirectResponse("/index.html#login", status_code=303)
 
-    authenticated_staff_account(request, db)
+    account = authenticated_staff_account(request, db)
+
+    if str(account.role or "").strip().casefold() == "admin":
+        return FileResponse(
+            PROJECT_ROOT / "admin-dashboard.html",
+            headers={"Cache-Control": "no-store"},
+        )
 
     return FileResponse(PROJECT_ROOT / "dashboard.html")
+
+
+@app.get("/staff-invitation")
+def staff_invitation_page():
+    return FileResponse(
+        PROJECT_ROOT / "staff-invitation.html",
+        headers={
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer",
+            "X-Robots-Tag": "noindex, nofollow",
+        },
+    )
 
 
 @app.get("/index.html")
@@ -457,6 +484,7 @@ def staff_password_login(
         account is None
         or str(account.role or "").strip().casefold()
         not in {"admin", "developer", "channel partner"}
+        or not account.is_active
         or not account.password_hash
         or not verify_password(payload.password, account.password_hash)
     ):
