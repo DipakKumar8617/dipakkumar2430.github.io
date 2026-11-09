@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime, timezone
 import re
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -7,6 +7,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_validator,
+    field_serializer,
     model_validator,
 )
 from sqlalchemy import case, func, or_, select
@@ -22,6 +23,7 @@ from .models import (
     UserAccount,
     RecentlyViewedProperty,
     SavedPropertySearch,
+    BuyerSiteVisit,
 )
 
 router = APIRouter(prefix="/api/buyer", tags=["buyer"])
@@ -176,6 +178,54 @@ class RecentlyViewedRecordResponse(BaseModel):
     tracked: bool
     already_viewed: bool
     property_id: int
+
+
+class BuyerSiteVisitInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scheduled_at: datetime
+    message: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def validate_scheduled_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("scheduled_at must include a timezone offset.")
+
+        utc_value = value.astimezone(timezone.utc)
+        if utc_value <= datetime.now(timezone.utc):
+            raise ValueError("Site visits must be scheduled in the future.")
+
+        return utc_value.replace(tzinfo=None)
+
+
+class BuyerSiteVisitData(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    property_listing_id: int
+    scheduled_at: datetime
+    message: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    property: PropertyListingData
+
+    @field_serializer("scheduled_at")
+    def serialize_scheduled_at(self, value: datetime) -> str:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat()
+
+
 
 
 class BuyerProfileData(BaseModel):
@@ -900,3 +950,148 @@ def save_buyer_profile(
     db.commit()
     db.refresh(profile)
     return profile
+
+
+@router.post(
+    "/site-visits/{property_id}",
+    response_model=BuyerSiteVisitData,
+    status_code=201,
+)
+def request_site_visit(
+    property_id: int,
+    payload: BuyerSiteVisitInput,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Request a visit to a currently published and available property."""
+    account, _provider, _subject = authenticated_account(request, db)
+
+    listing = db.scalar(
+        select(PropertyListing).where(
+            PropertyListing.id == property_id,
+            PropertyListing.is_published.is_(True),
+            PropertyListing.availability_status == "available",
+        )
+    )
+
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Available property not found.",
+        )
+
+    visit = BuyerSiteVisit(
+        account_id=account.id,
+        property_listing_id=listing.id,
+        scheduled_at=payload.scheduled_at,
+        message=payload.message,
+        status="requested",
+    )
+
+    db.add(visit)
+    db.commit()
+    db.refresh(visit)
+
+    return BuyerSiteVisitData(
+        id=visit.id,
+        property_listing_id=visit.property_listing_id,
+        scheduled_at=visit.scheduled_at,
+        message=visit.message,
+        status=visit.status,
+        created_at=visit.created_at,
+        updated_at=visit.updated_at,
+        property=listing,
+    )
+
+
+@router.get(
+    "/site-visits",
+    response_model=list[BuyerSiteVisitData],
+)
+def get_buyer_site_visits(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """List only the authenticated buyer's site visits."""
+    account, _provider, _subject = authenticated_account(request, db)
+
+    rows = db.execute(
+        select(BuyerSiteVisit, PropertyListing)
+        .join(
+            PropertyListing,
+            PropertyListing.id == BuyerSiteVisit.property_listing_id,
+        )
+        .where(BuyerSiteVisit.account_id == account.id)
+        .order_by(
+            BuyerSiteVisit.scheduled_at.desc(),
+            BuyerSiteVisit.id.desc(),
+        )
+    ).all()
+
+    return [
+        BuyerSiteVisitData(
+            id=visit.id,
+            property_listing_id=visit.property_listing_id,
+            scheduled_at=visit.scheduled_at,
+            message=visit.message,
+            status=visit.status,
+            created_at=visit.created_at,
+            updated_at=visit.updated_at,
+            property=listing,
+        )
+        for visit, listing in rows
+    ]
+
+
+@router.patch(
+    "/site-visits/{visit_id}/cancel",
+    response_model=BuyerSiteVisitData,
+)
+def cancel_buyer_site_visit(
+    visit_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Cancel an owned requested or confirmed site visit."""
+    account, _provider, _subject = authenticated_account(request, db)
+
+    visit = db.scalar(
+        select(BuyerSiteVisit).where(
+            BuyerSiteVisit.id == visit_id,
+            BuyerSiteVisit.account_id == account.id,
+        )
+    )
+
+    if visit is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Site visit not found.",
+        )
+
+    if visit.status not in ("requested", "confirmed"):
+        raise HTTPException(
+            status_code=409,
+            detail="This site visit can no longer be cancelled.",
+        )
+
+    listing = db.get(PropertyListing, visit.property_listing_id)
+    if listing is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Property associated with this visit was not found.",
+        )
+
+    visit.status = "cancelled"
+    db.commit()
+    db.refresh(visit)
+
+    return BuyerSiteVisitData(
+        id=visit.id,
+        property_listing_id=visit.property_listing_id,
+        scheduled_at=visit.scheduled_at,
+        message=visit.message,
+        status=visit.status,
+        created_at=visit.created_at,
+        updated_at=visit.updated_at,
+        property=listing,
+    )
