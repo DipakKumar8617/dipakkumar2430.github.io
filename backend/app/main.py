@@ -21,14 +21,19 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .database import get_db
+from .auth_dependencies import resolve_session_account
 from .models import AuthIdentity, UserAccount
 from .security import hash_password, verify_password
 from .admin import admin_router, invitation_router
+from .developer_organizations import router as developer_organizations_router
+from .developer_inventory import router as developer_inventory_router
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
 app.include_router(admin_router)
 app.include_router(invitation_router)
+app.include_router(developer_organizations_router)
+app.include_router(developer_inventory_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 if not SESSION_SECRET:
@@ -118,60 +123,7 @@ def authenticated_staff_account(
             detail="An approved staff role is required.",
         )
 
-    provider = user.get("provider")
-
-    if provider == "google":
-        subject = user.get("providerId")
-    elif provider == "local_otp":
-        subject = user.get("phone")
-    elif provider == "local_password":
-        subject = user.get("providerId")
-    else:
-        subject = None
-
-    if not isinstance(subject, str) or not subject.strip():
-        raise HTTPException(
-            status_code=401,
-            detail="Valid account identity required.",
-        )
-
-    identity = db.scalar(
-        select(AuthIdentity).where(
-            AuthIdentity.provider == provider,
-            AuthIdentity.provider_subject == subject,
-        )
-    )
-
-    if identity is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Account identity is not linked. Please sign in again.",
-        )
-
-    session_account_id = user.get("account_id")
-
-    if (
-        session_account_id is None
-        or str(session_account_id) != str(identity.account_id)
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Session identity does not match the account.",
-        )
-
-    account = db.get(UserAccount, identity.account_id)
-
-    if account is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Account not found. Please sign in again.",
-        )
-
-    if not account.is_active:
-        raise HTTPException(
-            status_code=403,
-            detail="This staff account is deactivated. Contact an administrator.",
-        )
+    account = resolve_session_account(request, db)
 
     database_role = str(account.role or "").strip().casefold()
     role_names = {
