@@ -494,3 +494,221 @@ class StaffAuditLog(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+class DeveloperOrganization(Base):
+    """Legal organization registered by a Developer account."""
+
+    __tablename__ = "developer_organizations"
+
+    __table_args__ = (
+        CheckConstraint(
+            "entity_type IN ('private_limited', 'public_limited', "
+            "'llp', 'partnership', 'proprietorship', 'other')",
+            name="ck_developer_organizations_entity_type",
+        ),
+        CheckConstraint(
+            "verification_status IN "
+            "('pending_verification', 'verified', 'rejected', 'suspended')",
+            name="ck_developer_organizations_verification_status",
+        ),
+        UniqueConstraint(
+            "country_code",
+            "entity_type",
+            "registration_number",
+            name="uq_developer_organizations_registration",
+        ),
+        Index(
+            "ix_developer_organizations_status_created_at",
+            "verification_status",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    legal_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    entity_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    registration_number: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+
+    registered_address: Mapped[str] = mapped_column(Text, nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(100), nullable=False)
+    postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    contact_phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    verification_status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="pending_verification",
+        server_default="pending_verification",
+    )
+
+    submitted_by_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_organizations_submitter",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    reviewed_by_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_organizations_reviewer",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class DeveloperOrganizationMembership(Base):
+    """Explicit account membership and permissions within an organization."""
+
+    __tablename__ = "developer_organization_memberships"
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner', 'admin', 'inventory_manager', 'viewer')",
+            name="ck_developer_org_memberships_role",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'suspended', 'removed')",
+            name="ck_developer_org_memberships_status",
+        ),
+        UniqueConstraint(
+            "organization_id",
+            "account_id",
+            name="uq_developer_org_memberships_org_account",
+        ),
+        Index(
+            "ix_developer_org_memberships_account_status",
+            "account_id",
+            "status",
+        ),
+        Index(
+            "ix_developer_org_memberships_org_status",
+            "organization_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "developer_organizations.id",
+            name="fk_developer_org_memberships_organization",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_org_memberships_account",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    role: Mapped[str] = mapped_column(String(30), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="active",
+        server_default="active",
+    )
+
+    created_by_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_org_memberships_creator",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class DeveloperOrganizationAuditLog(Base):
+    """Audit history for organization registration and administration."""
+
+    __tablename__ = "developer_organization_audit_logs"
+
+    __table_args__ = (
+        Index(
+            "ix_developer_org_audit_org_created_at",
+            "organization_id",
+            "created_at",
+        ),
+        Index(
+            "ix_developer_org_audit_actor_created_at",
+            "actor_account_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "developer_organizations.id",
+            name="fk_developer_org_audit_organization",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    actor_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_org_audit_actor",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    target_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_developer_org_audit_target",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    details: Mapped[dict[str, object] | None] = mapped_column(
+        JSON, nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
