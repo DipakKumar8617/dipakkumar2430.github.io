@@ -6,13 +6,20 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from .database import get_db
 from .auth_dependencies import resolve_session_account
-from .models import AuthIdentity, StaffAuditLog, StaffInvitation, UserAccount
+from .models import (
+    AuthIdentity,
+    DeveloperOrganization,
+    DeveloperOrganizationAuditLog,
+    StaffAuditLog,
+    StaffInvitation,
+    UserAccount,
+)
 from .security import hash_password
 
 
@@ -63,6 +70,21 @@ class StaffInvitationAccept(StaffInvitationToken):
         if len(value) < 2:
             raise ValueError("Enter your full name.")
         return value
+
+
+class DeveloperOrganizationReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verification_status: Literal["verified", "rejected"]
+    review_notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("review_notes")
+    @classmethod
+    def normalize_review_notes(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
 
 def require_admin(
@@ -533,3 +555,133 @@ def activate_staff(
     db: Session = Depends(get_db),
 ):
     return _set_staff_active(account_id, True, admin, db)
+
+
+@admin_router.get("/organizations/pending")
+def list_pending_organizations(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    organizations = db.scalars(
+        select(DeveloperOrganization)
+        .where(
+            DeveloperOrganization.verification_status
+            == "pending_verification"
+        )
+        .order_by(
+            DeveloperOrganization.created_at.asc(),
+            DeveloperOrganization.id.asc(),
+        )
+        .limit(100)
+    ).all()
+
+    return {
+        "items": [
+            {
+                "id": organization.id,
+                "legal_name": organization.legal_name,
+                "display_name": organization.display_name,
+                "entity_type": organization.entity_type,
+                "registration_number": organization.registration_number,
+                "country_code": organization.country_code,
+                "registered_address": organization.registered_address,
+                "city": organization.city,
+                "state": organization.state,
+                "postal_code": organization.postal_code,
+                "contact_email": organization.contact_email,
+                "contact_phone": organization.contact_phone,
+                "website": organization.website,
+                "verification_status": organization.verification_status,
+                "submitted_by_account_id": organization.submitted_by_account_id,
+                "created_at": organization.created_at,
+            }
+            for organization in organizations
+        ]
+    }
+
+
+@admin_router.post("/organizations/{organization_id}/review")
+def review_organization(
+    organization_id: int,
+    payload: DeveloperOrganizationReview,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    reviewed_at = utc_now_naive()
+    previous_status = "pending_verification"
+    new_status = payload.verification_status
+
+    try:
+        result = db.execute(
+            update(DeveloperOrganization)
+            .where(
+                DeveloperOrganization.id == organization_id,
+                DeveloperOrganization.verification_status == previous_status,
+            )
+            .values(
+                verification_status=new_status,
+                reviewed_by_account_id=admin.id,
+                reviewed_at=reviewed_at,
+                review_notes=payload.review_notes,
+            )
+        )
+
+        if result.rowcount != 1:
+            existing = db.get(DeveloperOrganization, organization_id)
+            db.rollback()
+
+            if existing is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Organization not found.",
+                )
+
+            raise HTTPException(
+                status_code=409,
+                detail="Organization is no longer pending verification.",
+            )
+
+        organization = db.get(DeveloperOrganization, organization_id)
+
+        db.add(
+            DeveloperOrganizationAuditLog(
+                organization_id=organization_id,
+                actor_account_id=admin.id,
+                target_account_id=organization.submitted_by_account_id,
+                action=f"organization.{new_status}",
+                details={
+                    "previous_status": previous_status,
+                    "new_status": new_status,
+                },
+            )
+        )
+
+        db.commit()
+        db.refresh(organization)
+
+        return {
+            "id": organization.id,
+            "legal_name": organization.legal_name,
+            "display_name": organization.display_name,
+            "entity_type": organization.entity_type,
+            "registration_number": organization.registration_number,
+            "country_code": organization.country_code,
+            "registered_address": organization.registered_address,
+            "city": organization.city,
+            "state": organization.state,
+            "postal_code": organization.postal_code,
+            "contact_email": organization.contact_email,
+            "contact_phone": organization.contact_phone,
+            "website": organization.website,
+            "verification_status": organization.verification_status,
+            "submitted_by_account_id": organization.submitted_by_account_id,
+            "reviewed_by_account_id": organization.reviewed_by_account_id,
+            "reviewed_at": organization.reviewed_at,
+            "created_at": organization.created_at,
+        }
+
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise

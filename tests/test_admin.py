@@ -1,11 +1,17 @@
 from urllib.parse import parse_qs, urlsplit
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.database import engine
 from backend.app.main import hash_password
-from backend.app.models import AuthIdentity, StaffInvitation, UserAccount
+from backend.app.models import (
+    AuthIdentity,
+    DeveloperOrganization,
+    DeveloperOrganizationAuditLog,
+    StaffInvitation,
+    UserAccount,
+)
 
 
 TEST_PASSWORD = "StrongAdminPass123!"
@@ -529,3 +535,251 @@ def test_deactivated_admin_cannot_use_admin_api(client):
         },
     )
     assert response.status_code == 401
+
+
+
+def _create_organization_for_review(
+    email="review-developer@example.test",
+    verification_status="pending_verification",
+):
+    developer_id = _create_account("developer", email)
+
+    with Session(engine) as db:
+        organization = DeveloperOrganization(
+            legal_name="Marine Review Test Private Limited",
+            display_name="Marine Review Test",
+            entity_type="private_limited",
+            registration_number=f"REVIEW-{developer_id}",
+            country_code="IN",
+            registered_address="12 Marine Drive",
+            city="Mumbai",
+            state="Maharashtra",
+            postal_code="400001",
+            contact_email="contact@marine-review.example",
+            contact_phone="+919876543210",
+            verification_status=verification_status,
+            submitted_by_account_id=developer_id,
+        )
+        db.add(organization)
+        db.commit()
+        db.refresh(organization)
+        return organization.id
+
+
+def test_organization_verification_queue_requires_authentication(client):
+    response = client.get("/api/admin/organizations/pending")
+
+    assert response.status_code == 401
+
+
+def test_developer_cannot_access_organization_verification_queue(client):
+    _create_account("developer", "review-queue-developer@example.test")
+    _login_staff(client, "Developer", "review-queue-developer@example.test")
+
+    response = client.get("/api/admin/organizations/pending")
+
+    assert response.status_code == 403
+
+
+def test_channel_partner_cannot_access_organization_verification_queue(client):
+    _create_account("channel partner", "review-queue-partner@example.test")
+    _login_staff(client, "Channel Partner", "review-queue-partner@example.test")
+
+    response = client.get("/api/admin/organizations/pending")
+
+    assert response.status_code == 403
+
+
+def test_admin_verification_queue_contains_only_pending_organizations(client):
+    pending_id = _create_organization_for_review(
+        email="pending-review@example.test",
+    )
+    _create_organization_for_review(
+        email="verified-review@example.test",
+        verification_status="verified",
+    )
+    _create_organization_for_review(
+        email="rejected-review@example.test",
+        verification_status="rejected",
+    )
+
+    _login_admin(client)
+    response = client.get("/api/admin/organizations/pending")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+
+    returned_ids = {item["id"] for item in data["items"]}
+    assert returned_ids == {pending_id}
+    assert all(
+        item["verification_status"] == "pending_verification"
+        for item in data["items"]
+    )
+
+
+
+def test_admin_can_approve_pending_organization_and_audit_decision(client):
+    organization_id = _create_organization_for_review()
+    admin_login = _login_admin(client)
+    admin_id = admin_login.json()["user"]["account_id"]
+
+    response = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "verified"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["verification_status"] == "verified"
+    assert response.json()["reviewed_by_account_id"] == admin_id
+    assert response.json()["reviewed_at"] is not None
+
+    with Session(engine) as db:
+        organization = db.get(DeveloperOrganization, organization_id)
+        assert organization.verification_status == "verified"
+        assert organization.reviewed_by_account_id == admin_id
+        assert organization.reviewed_at is not None
+
+        audit = db.scalar(
+            select(DeveloperOrganizationAuditLog).where(
+                DeveloperOrganizationAuditLog.organization_id == organization_id
+            )
+        )
+        assert audit is not None
+        assert audit.actor_account_id == admin_id
+        assert audit.action == "organization.verified"
+        assert audit.details == {
+            "previous_status": "pending_verification",
+            "new_status": "verified",
+        }
+
+
+def test_admin_can_reject_pending_organization_with_review_notes(client):
+    organization_id = _create_organization_for_review()
+    admin_login = _login_admin(client)
+    admin_id = admin_login.json()["user"]["account_id"]
+
+    response = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={
+            "verification_status": "rejected",
+            "review_notes": "  Registration document could not be verified.  ",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["verification_status"] == "rejected"
+    assert response.json()["reviewed_by_account_id"] == admin_id
+    assert response.json()["reviewed_at"] is not None
+
+    with Session(engine) as db:
+        organization = db.get(DeveloperOrganization, organization_id)
+        assert organization.verification_status == "rejected"
+        assert organization.review_notes == (
+            "Registration document could not be verified."
+        )
+
+        audit = db.scalar(
+            select(DeveloperOrganizationAuditLog).where(
+                DeveloperOrganizationAuditLog.organization_id == organization_id
+            )
+        )
+        assert audit.action == "organization.rejected"
+        assert audit.details == {
+            "previous_status": "pending_verification",
+            "new_status": "rejected",
+        }
+        assert "Registration document" not in str(audit.details)
+
+
+def test_admin_cannot_review_organization_more_than_once(client):
+    organization_id = _create_organization_for_review()
+    _login_admin(client)
+
+    first = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "verified"},
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "rejected"},
+    )
+    assert second.status_code == 409
+
+    with Session(engine) as db:
+        organization = db.get(DeveloperOrganization, organization_id)
+        assert organization.verification_status == "verified"
+
+        audit_count = db.scalar(
+            select(func.count(DeveloperOrganizationAuditLog.id)).where(
+                DeveloperOrganizationAuditLog.organization_id == organization_id
+            )
+        )
+        assert audit_count == 1
+
+
+def test_reviewing_nonexistent_organization_returns_404(client):
+    _login_admin(client)
+
+    response = client.post(
+        "/api/admin/organizations/999999/review",
+        json={"verification_status": "verified"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_organization_review_requires_admin(client):
+    organization_id = _create_organization_for_review()
+
+    response = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "verified"},
+    )
+    assert response.status_code == 401
+
+    _create_account("developer", "review-decision-developer@example.test")
+    _login_staff(client, "Developer", "review-decision-developer@example.test")
+
+    forbidden = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "verified"},
+    )
+    assert forbidden.status_code == 403
+
+
+def test_organization_review_rejects_invalid_status_and_extra_fields(client):
+    organization_id = _create_organization_for_review()
+    _login_admin(client)
+
+    invalid_status = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={"verification_status": "suspended"},
+    )
+    assert invalid_status.status_code == 422
+
+    extra_field = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={
+            "verification_status": "verified",
+            "reviewed_by_account_id": 1,
+        },
+    )
+    assert extra_field.status_code == 422
+
+
+def test_organization_review_rejects_oversized_notes(client):
+    organization_id = _create_organization_for_review()
+    _login_admin(client)
+
+    response = client.post(
+        f"/api/admin/organizations/{organization_id}/review",
+        json={
+            "verification_status": "rejected",
+            "review_notes": "x" * 2001,
+        },
+    )
+
+    assert response.status_code == 422
