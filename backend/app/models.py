@@ -116,6 +116,15 @@ class PropertyListing(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    developer_organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "developer_organizations.id",
+            name="fk_property_listings_developer_organization",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(180), nullable=False)
     property_type: Mapped[str] = mapped_column(String(30), nullable=False)
     city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)

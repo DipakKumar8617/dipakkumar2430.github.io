@@ -26,12 +26,14 @@ from .models import AuthIdentity, UserAccount
 from .security import hash_password, verify_password
 from .admin import admin_router, invitation_router
 from .developer_organizations import router as developer_organizations_router
+from .developer_inventory import router as developer_inventory_router
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
 app.include_router(admin_router)
 app.include_router(invitation_router)
 app.include_router(developer_organizations_router)
+app.include_router(developer_inventory_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 if not SESSION_SECRET:
