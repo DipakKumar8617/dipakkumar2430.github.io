@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
-from backend.app.models import UserAccount
+from backend.app.models import BuyerEnquiry, UserAccount
 
 
 def registration_payload(**overrides):
@@ -101,3 +101,69 @@ def test_manual_registration_rejects_invalid_email(client):
     )
 
     assert response.status_code == 422
+
+
+def test_registration_links_matching_visitor_enquiry_without_signing_in(client):
+    enquiry_response = client.post(
+        "/api/buyer/enquiries",
+        json={
+            "full_name": "Test Buyer",
+            "email": " BUYER.TEST@EXAMPLE.COM ",
+            "phone": "+91 98765 43210",
+            "city": "Kolkata",
+            "state": "West Bengal",
+        },
+    )
+    assert enquiry_response.status_code == 201
+    enquiry_id = enquiry_response.json()["enquiry_id"]
+
+    registration_response = client.post(
+        "/api/register",
+        json=registration_payload(email="buyer.test@example.com"),
+    )
+    assert registration_response.status_code == 201
+
+    # Linking an enquiry must not authenticate the newly registered buyer.
+    session = client.get("/api/session").json()
+    assert session["authenticated"] is False
+
+    with SessionLocal() as db:
+        enquiry = db.get(BuyerEnquiry, enquiry_id)
+        account = db.scalar(
+            select(UserAccount).where(
+                UserAccount.email == "buyer.test@example.com"
+            )
+        )
+
+        assert enquiry is not None
+        assert account is not None
+        assert enquiry.account_id == account.id
+
+
+def test_registration_does_not_link_enquiry_with_different_email(client):
+    enquiry_response = client.post(
+        "/api/buyer/enquiries",
+        json={
+            "full_name": "Visitor Buyer",
+            "email": "visitor@example.com",
+            "phone": "+91 98765 43210",
+            "city": "Kolkata",
+            "state": "West Bengal",
+        },
+    )
+    assert enquiry_response.status_code == 201
+    enquiry_id = enquiry_response.json()["enquiry_id"]
+
+    registration_response = client.post(
+        "/api/register",
+        json=registration_payload(email="buyer.test@example.com"),
+    )
+    assert registration_response.status_code == 201
+
+    with SessionLocal() as db:
+        enquiry = db.get(BuyerEnquiry, enquiry_id)
+        assert enquiry is not None
+        assert enquiry.account_id is None
+
+    session = client.get("/api/session").json()
+    assert session["authenticated"] is False
