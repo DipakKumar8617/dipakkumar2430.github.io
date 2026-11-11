@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .database import get_db
 from .auth_dependencies import resolve_session_account
-from .models import AuthIdentity, UserAccount
+from .models import AuthIdentity, BuyerEnquiry, UserAccount
 from .security import hash_password, verify_password
 from .admin import admin_router, invitation_router
 from .developer_organizations import router as developer_organizations_router
@@ -304,12 +304,14 @@ def get_session(request: Request):
     return {"authenticated": True, "user": user}
 
 
+
 @app.post("/api/register", status_code=201)
 def register_buyer(
     payload: ManualBuyerRegistration,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    """Create a Buyer account and its password identity without signing in."""
+    """Create a Buyer account and link a matching visitor enquiry without signing in."""
     if payload.role.strip().lower() != "buyer":
         raise HTTPException(
             status_code=403,
@@ -322,12 +324,18 @@ def register_buyer(
 
     if len(full_name) < 2:
         raise HTTPException(status_code=422, detail="Enter your full name.")
+
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(status_code=422, detail="Enter a valid email address.")
+
     if payload.password != payload.confirmPassword:
         raise HTTPException(status_code=422, detail="Passwords do not match.")
+
     if db.scalar(select(UserAccount.id).where(UserAccount.email == email)):
-        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists.",
+        )
 
     account = UserAccount(
         full_name=full_name,
@@ -337,28 +345,62 @@ def register_buyer(
         role="buyer",
     )
     db.add(account)
+
     try:
+        # Obtain the canonical account ID before linking the enquiry.
         db.flush()
-        db.add(AuthIdentity(
-            account_id=account.id,
-            provider="local_password",
-            provider_subject=str(account.id),
-        ))
+
+        db.add(
+            AuthIdentity(
+                account_id=account.id,
+                provider="local_password",
+                provider_subject=str(account.id),
+            )
+        )
+
+        # Link only the enquiry captured in this browser session.
+        enquiry_id = request.session.get("buyer_enquiry_id")
+
+        if isinstance(enquiry_id, int) and not isinstance(enquiry_id, bool):
+            enquiry = db.scalar(
+                select(BuyerEnquiry).where(
+                    BuyerEnquiry.id == enquiry_id,
+                    BuyerEnquiry.email == email,
+                    BuyerEnquiry.account_id.is_(None),
+                )
+            )
+
+            if enquiry is not None:
+                enquiry.account_id = account.id
+
+        # Account, identity and enquiry association commit atomically.
         db.commit()
         db.refresh(account)
+
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="An account with this email or sign-in identity already exists.")
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email or sign-in identity already exists.",
+        )
+
+    # Clear the pending enquiry reference after successful registration.
+    # A stale or mismatched enquiry does not prevent account creation.
+    request.session.pop("buyer_enquiry_id", None)
 
     redirect = "/index.html?next=%2Fbuyer&registered=1"
+
     if payload.property_id is not None:
         redirect += f"&property_id={payload.property_id}"
+
     redirect += "#login"
+
     return {
         "success": True,
         "message": "Account created. Please sign in to continue.",
         "redirect": redirect,
     }
+
 
 
 @app.post("/api/auth/password/login")

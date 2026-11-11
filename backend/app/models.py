@@ -74,6 +74,11 @@ class BuyerEnquiry(Base):
     __tablename__ = "buyer_enquiries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
     phone: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
