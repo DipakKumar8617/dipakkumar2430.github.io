@@ -25,6 +25,7 @@ from .auth_dependencies import resolve_session_account
 from .models import AuthIdentity, BuyerEnquiry, UserAccount
 from .security import hash_password, verify_password
 from .admin import admin_router, invitation_router
+from .staff_site_visits import router as staff_site_visits_router
 from .developer_organizations import router as developer_organizations_router
 from .developer_inventory import router as developer_inventory_router
 
@@ -34,6 +35,7 @@ app.include_router(admin_router)
 app.include_router(invitation_router)
 app.include_router(developer_organizations_router)
 app.include_router(developer_inventory_router)
+app.include_router(staff_site_visits_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 if not SESSION_SECRET:
