@@ -16,6 +16,8 @@ from .models import (
     AuthIdentity,
     DeveloperOrganization,
     DeveloperOrganizationAuditLog,
+    PropertyChannelPartnerAssignment,
+    PropertyListing,
     StaffAuditLog,
     StaffInvitation,
     UserAccount,
@@ -85,6 +87,11 @@ class DeveloperOrganizationReview(BaseModel):
             return None
         value = value.strip()
         return value or None
+
+class PropertyChannelPartnerAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    channel_partner_account_id: int = Field(gt=0)
 
 
 def require_admin(
@@ -681,6 +688,185 @@ def review_organization(
         }
 
     except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+
+@admin_router.post("/properties/{property_id}/channel-partner-assignment")
+def assign_property_channel_partner(
+    property_id: int,
+    payload: PropertyChannelPartnerAssign,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        property_listing = db.scalar(
+            select(PropertyListing)
+            .where(PropertyListing.id == property_id)
+            .with_for_update()
+        )
+
+        if property_listing is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Property not found.",
+            )
+
+        channel_partner = db.get(
+            UserAccount,
+            payload.channel_partner_account_id,
+        )
+
+        if channel_partner is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Channel Partner account not found.",
+            )
+
+        if not channel_partner.is_active:
+            raise HTTPException(
+                status_code=409,
+                detail="Inactive accounts cannot receive property assignments.",
+            )
+
+        if str(channel_partner.role or "").strip().casefold() != "channel partner":
+            raise HTTPException(
+                status_code=409,
+                detail="The selected account is not a Channel Partner.",
+            )
+
+        existing_assignment = db.scalar(
+            select(PropertyChannelPartnerAssignment)
+            .where(
+                PropertyChannelPartnerAssignment.property_listing_id
+                == property_id
+            )
+            .with_for_update()
+        )
+
+        if existing_assignment is not None:
+            if (
+                existing_assignment.channel_partner_account_id
+                == channel_partner.id
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="This property is already assigned to this Channel Partner.",
+                )
+
+            raise HTTPException(
+                status_code=409,
+                detail="This property is assigned to another Channel Partner. Revoke the existing assignment first.",
+            )
+
+        assignment = PropertyChannelPartnerAssignment(
+            property_listing_id=property_id,
+            channel_partner_account_id=channel_partner.id,
+            assigned_by_account_id=admin.id,
+        )
+        db.add(assignment)
+        db.flush()
+
+        db.add(
+            StaffAuditLog(
+                actor_account_id=admin.id,
+                target_account_id=channel_partner.id,
+                action="property.channel_partner.assigned",
+                details={
+                    "property_listing_id": property_id,
+                    "channel_partner_account_id": channel_partner.id,
+                },
+            )
+        )
+
+        db.commit()
+        db.refresh(assignment)
+
+        return {
+            "id": assignment.id,
+            "property_listing_id": assignment.property_listing_id,
+            "channel_partner_account_id": assignment.channel_partner_account_id,
+            "assigned_by_account_id": assignment.assigned_by_account_id,
+            "assigned_at": assignment.assigned_at,
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="The property assignment conflicts with another update.",
+        )
+    except Exception:
+        db.rollback()
+        raise
+
+
+@admin_router.delete("/properties/{property_id}/channel-partner-assignment")
+def revoke_property_channel_partner(
+    property_id: int,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        property_listing = db.scalar(
+            select(PropertyListing)
+            .where(PropertyListing.id == property_id)
+            .with_for_update()
+        )
+
+        if property_listing is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Property not found.",
+            )
+
+        assignment = db.scalar(
+            select(PropertyChannelPartnerAssignment)
+            .where(
+                PropertyChannelPartnerAssignment.property_listing_id
+                == property_id
+            )
+            .with_for_update()
+        )
+
+        if assignment is None:
+            raise HTTPException(
+                status_code=404,
+                detail="No active Channel Partner assignment exists for this property.",
+            )
+
+        previous_channel_partner_id = assignment.channel_partner_account_id
+
+        db.add(
+            StaffAuditLog(
+                actor_account_id=admin.id,
+                target_account_id=previous_channel_partner_id,
+                action="property.channel_partner.revoked",
+                details={
+                    "property_listing_id": property_id,
+                    "previous_channel_partner_account_id": (
+                        previous_channel_partner_id
+                    ),
+                },
+            )
+        )
+
+        db.delete(assignment)
+        db.commit()
+
+        return {
+            "message": "Channel Partner assignment revoked.",
+            "property_listing_id": property_id,
+            "previous_channel_partner_account_id": previous_channel_partner_id,
+        }
+
+    except HTTPException:
+        db.rollback()
         raise
     except Exception:
         db.rollback()
