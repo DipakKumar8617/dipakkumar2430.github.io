@@ -726,3 +726,55 @@ class DeveloperOrganizationAuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
+
+
+class PropertyChannelPartnerAssignment(Base):
+    """The single active Channel Partner assignment for a property."""
+
+    __tablename__ = "property_channel_partner_assignments"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "property_listing_id",
+            name="uq_property_cp_assignment_property",
+        ),
+        Index(
+            "ix_property_cp_assignment_partner",
+            "channel_partner_account_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    property_listing_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_listings.id",
+            name="fk_property_cp_assignment_property",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    channel_partner_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_property_cp_assignment_partner",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    assigned_by_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_property_cp_assignment_admin",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )

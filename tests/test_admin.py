@@ -9,6 +9,9 @@ from backend.app.models import (
     AuthIdentity,
     DeveloperOrganization,
     DeveloperOrganizationAuditLog,
+    PropertyChannelPartnerAssignment,
+    PropertyListing,
+    StaffAuditLog,
     StaffInvitation,
     UserAccount,
 )
@@ -783,3 +786,209 @@ def test_organization_review_rejects_oversized_notes(client):
     )
 
     assert response.status_code == 422
+
+
+
+def _create_assignment_test_property():
+    with Session(engine) as db:
+        listing = PropertyListing(
+            title="Assignment Test Apartment",
+            property_type="apartment",
+            city="Kolkata",
+            state="West Bengal",
+            price_inr=12500000,
+            bedrooms=3,
+            area_sqft=1420,
+            description="Assignment API test fixture.",
+            availability_status="available",
+            is_published=True,
+        )
+        db.add(listing)
+        db.commit()
+        return listing.id
+
+
+def test_admin_can_assign_property_to_channel_partner(client):
+    admin_id = _create_account("admin", "assignment-admin@example.test")
+    cp_id = _create_account("channel partner", "assignment-cp@example.test")
+    property_id = _create_assignment_test_property()
+    _login_staff(client, "Admin", "assignment-admin@example.test")
+
+    response = client.post(
+        f"/api/admin/properties/{property_id}/channel-partner-assignment",
+        json={"channel_partner_account_id": cp_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["property_listing_id"] == property_id
+    assert response.json()["channel_partner_account_id"] == cp_id
+    assert response.json()["assigned_by_account_id"] == admin_id
+
+    with Session(engine) as db:
+        assignment = db.scalar(
+            select(PropertyChannelPartnerAssignment).where(
+                PropertyChannelPartnerAssignment.property_listing_id == property_id
+            )
+        )
+        audit = db.scalar(
+            select(StaffAuditLog).where(
+                StaffAuditLog.action == "property.channel_partner.assigned",
+                StaffAuditLog.details["property_listing_id"].as_integer() == property_id,
+            )
+        )
+
+        assert assignment is not None
+        assert assignment.channel_partner_account_id == cp_id
+        assert assignment.assigned_by_account_id == admin_id
+        assert audit is not None
+        assert audit.actor_account_id == admin_id
+        assert audit.target_account_id == cp_id
+
+
+def test_property_assignment_is_exclusive_across_channel_partners(client):
+    _create_account("admin", "exclusive-admin@example.test")
+    first_cp_id = _create_account("channel partner", "exclusive-cp1@example.test")
+    second_cp_id = _create_account("channel partner", "exclusive-cp2@example.test")
+    property_id = _create_assignment_test_property()
+    _login_staff(client, "Admin", "exclusive-admin@example.test")
+
+    endpoint = f"/api/admin/properties/{property_id}/channel-partner-assignment"
+
+    first = client.post(
+        endpoint,
+        json={"channel_partner_account_id": first_cp_id},
+    )
+    duplicate = client.post(
+        endpoint,
+        json={"channel_partner_account_id": first_cp_id},
+    )
+    competing = client.post(
+        endpoint,
+        json={"channel_partner_account_id": second_cp_id},
+    )
+
+    assert first.status_code == 200
+    assert duplicate.status_code == 409
+    assert competing.status_code == 409
+
+    with Session(engine) as db:
+        assignments = db.scalars(
+            select(PropertyChannelPartnerAssignment).where(
+                PropertyChannelPartnerAssignment.property_listing_id == property_id
+            )
+        ).all()
+        assert len(assignments) == 1
+        assert assignments[0].channel_partner_account_id == first_cp_id
+
+
+def test_admin_can_revoke_and_reassign_property(client):
+    _create_account("admin", "reassign-admin@example.test")
+    first_cp_id = _create_account("channel partner", "reassign-cp1@example.test")
+    second_cp_id = _create_account("channel partner", "reassign-cp2@example.test")
+    property_id = _create_assignment_test_property()
+    _login_staff(client, "Admin", "reassign-admin@example.test")
+
+    endpoint = f"/api/admin/properties/{property_id}/channel-partner-assignment"
+
+    assigned = client.post(
+        endpoint,
+        json={"channel_partner_account_id": first_cp_id},
+    )
+    assert assigned.status_code == 200
+
+    revoked = client.delete(endpoint)
+    assert revoked.status_code == 200
+    assert revoked.json()["previous_channel_partner_account_id"] == first_cp_id
+
+    with Session(engine) as db:
+        assert db.scalar(
+            select(PropertyChannelPartnerAssignment).where(
+                PropertyChannelPartnerAssignment.property_listing_id == property_id
+            )
+        ) is None
+
+    reassigned = client.post(
+        endpoint,
+        json={"channel_partner_account_id": second_cp_id},
+    )
+    assert reassigned.status_code == 200
+    assert reassigned.json()["channel_partner_account_id"] == second_cp_id
+
+    with Session(engine) as db:
+        assignment = db.scalar(
+            select(PropertyChannelPartnerAssignment).where(
+                PropertyChannelPartnerAssignment.property_listing_id == property_id
+            )
+        )
+        actions = db.scalars(
+            select(StaffAuditLog.action).where(
+                StaffAuditLog.details["property_listing_id"].as_integer() == property_id
+            )
+        ).all()
+
+        assert assignment is not None
+        assert assignment.channel_partner_account_id == second_cp_id
+        assert actions.count("property.channel_partner.assigned") == 2
+        assert actions.count("property.channel_partner.revoked") == 1
+
+
+def test_admin_assignment_rejects_invalid_channel_partner_accounts(client):
+    _create_account("admin", "invalid-cp-admin@example.test")
+    buyer_id = _create_account("buyer", "invalid-cp-buyer@example.test")
+    developer_id = _create_account("developer", "invalid-cp-developer@example.test")
+    inactive_cp_id = _create_account("channel partner", "inactive-cp@example.test")
+    property_id = _create_assignment_test_property()
+
+    with Session(engine) as db:
+        inactive_cp = db.get(UserAccount, inactive_cp_id)
+        inactive_cp.is_active = False
+        db.commit()
+
+    _login_staff(client, "Admin", "invalid-cp-admin@example.test")
+    endpoint = f"/api/admin/properties/{property_id}/channel-partner-assignment"
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": buyer_id},
+    ).status_code == 409
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": developer_id},
+    ).status_code == 409
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": inactive_cp_id},
+    ).status_code == 409
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": 999999},
+    ).status_code == 404
+
+    assert client.post(
+        f"/api/admin/properties/999999/channel-partner-assignment",
+        json={"channel_partner_account_id": inactive_cp_id},
+    ).status_code == 404
+
+
+def test_property_assignment_endpoints_require_admin(client):
+    property_id = _create_assignment_test_property()
+
+    endpoint = f"/api/admin/properties/{property_id}/channel-partner-assignment"
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": 1},
+    ).status_code == 401
+
+    _create_account("developer", "assignment-forbidden@example.test")
+    _login_staff(client, "Developer", "assignment-forbidden@example.test")
+
+    assert client.post(
+        endpoint,
+        json={"channel_partner_account_id": 1},
+    ).status_code == 403
+
+    assert client.delete(endpoint).status_code == 403
