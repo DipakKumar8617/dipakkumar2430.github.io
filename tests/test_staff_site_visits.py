@@ -237,16 +237,20 @@ def test_channel_partner_access_is_assignment_scoped(client):
     assert response.status_code == 404
 
 
+
 def test_revoked_channel_partner_loses_access_immediately(client):
     data = _seed()
+
+    ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     with Session(engine) as db:
         assignment = db.get(
             PropertyChannelPartnerAssignment,
             data["assignment_id"],
         )
-        db.delete(assignment)
-        db.flush()
+
+        assignment.ended_at = ended_at
+        assignment.ended_by_account_id = data["admin"][0]
 
         db.add(
             PropertyChannelPartnerAssignment(
@@ -257,16 +261,36 @@ def test_revoked_channel_partner_loses_access_immediately(client):
         )
         db.commit()
 
-    _login(client, "channel partner", data["cp"][1])
-    assert client.get(BASE_URL).json() == []
-    assert client.get(f"{BASE_URL}/{data['visit_id']}").status_code == 404
+        # Verify the original assignment remains in history.
+        historical_assignment = db.get(
+            PropertyChannelPartnerAssignment,
+            data["assignment_id"],
+        )
+        assert historical_assignment is not None
+        assert historical_assignment.ended_at == ended_at
+        assert historical_assignment.ended_by_account_id == data["admin"][0]
 
+    # Former CP immediately loses access.
+    _login(client, "channel partner", data["cp"][1])
+
+    assert client.get(BASE_URL).json() == []
+    assert client.get(
+        f"{BASE_URL}/{data['visit_id']}"
+    ).status_code == 404
+
+    assert client.patch(
+        f"{BASE_URL}/{data['visit_id']}/status",
+        json={"status": "confirmed"},
+    ).status_code == 404
+
+    # Replacement CP receives access.
     client.cookies.clear()
     _login(client, "channel partner", data["other_cp"][1])
 
     response = client.get(f"{BASE_URL}/{data['visit_id']}")
     assert response.status_code == 200, response.text
     assert response.json()["buyer"]["email"] == "buyer@staff.test"
+
 
 
 def test_admin_can_update_status_and_audit_action_is_recorded(client):

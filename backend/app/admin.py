@@ -737,11 +737,14 @@ def assign_property_channel_partner(
                 detail="The selected account is not a Channel Partner.",
             )
 
+        # Only an active assignment can prevent a new assignment.
+        # Historical assignments remain untouched.
         existing_assignment = db.scalar(
             select(PropertyChannelPartnerAssignment)
             .where(
                 PropertyChannelPartnerAssignment.property_listing_id
-                == property_id
+                == property_id,
+                PropertyChannelPartnerAssignment.ended_at.is_(None),
             )
             .with_for_update()
         )
@@ -790,6 +793,8 @@ def assign_property_channel_partner(
             "channel_partner_account_id": assignment.channel_partner_account_id,
             "assigned_by_account_id": assignment.assigned_by_account_id,
             "assigned_at": assignment.assigned_at,
+            "ended_at": assignment.ended_at,
+            "ended_by_account_id": assignment.ended_by_account_id,
         }
 
     except HTTPException:
@@ -825,11 +830,13 @@ def revoke_property_channel_partner(
                 detail="Property not found.",
             )
 
+        # Only retrieve the currently active assignment.
         assignment = db.scalar(
             select(PropertyChannelPartnerAssignment)
             .where(
                 PropertyChannelPartnerAssignment.property_listing_id
-                == property_id
+                == property_id,
+                PropertyChannelPartnerAssignment.ended_at.is_(None),
             )
             .with_for_update()
         )
@@ -841,6 +848,11 @@ def revoke_property_channel_partner(
             )
 
         previous_channel_partner_id = assignment.channel_partner_account_id
+        ended_at = utc_now_naive()
+
+        # Preserve the assignment as historical data.
+        assignment.ended_at = ended_at
+        assignment.ended_by_account_id = admin.id
 
         db.add(
             StaffAuditLog(
@@ -852,17 +864,20 @@ def revoke_property_channel_partner(
                     "previous_channel_partner_account_id": (
                         previous_channel_partner_id
                     ),
+                    "ended_at": ended_at.isoformat(),
                 },
             )
         )
 
-        db.delete(assignment)
         db.commit()
+        db.refresh(assignment)
 
         return {
             "message": "Channel Partner assignment revoked.",
             "property_listing_id": property_id,
             "previous_channel_partner_account_id": previous_channel_partner_id,
+            "ended_at": assignment.ended_at,
+            "ended_by_account_id": assignment.ended_by_account_id,
         }
 
     except HTTPException:
