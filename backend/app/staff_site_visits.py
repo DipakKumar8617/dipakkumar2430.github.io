@@ -79,6 +79,7 @@ def _visit_query(account: UserAccount):
             == BuyerSiteVisit.property_listing_id,
             PropertyChannelPartnerAssignment.channel_partner_account_id
             == account.id,
+            PropertyChannelPartnerAssignment.ended_at.is_(None),
         ).exists()
         statement = statement.where(assignment_exists)
 

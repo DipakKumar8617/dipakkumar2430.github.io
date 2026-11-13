@@ -4,6 +4,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     Index,
@@ -729,14 +730,15 @@ class DeveloperOrganizationAuditLog(Base):
 
 
 class PropertyChannelPartnerAssignment(Base):
-    """The single active Channel Partner assignment for a property."""
+    """Maintain the complete assignment history for a property."""
 
     __tablename__ = "property_channel_partner_assignments"
 
     __table_args__ = (
-        UniqueConstraint(
-            "property_listing_id",
-            name="uq_property_cp_assignment_property",
+        Index(
+            "uq_property_cp_assignment_active_property",
+            "active_property_listing_id",
+            unique=True,
         ),
         Index(
             "ix_property_cp_assignment_partner",
@@ -777,4 +779,28 @@ class PropertyChannelPartnerAssignment(Base):
         DateTime,
         nullable=False,
         server_default=func.now(),
+    )
+
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    ended_by_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_property_cp_assignment_ended_by",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    active_property_listing_id: Mapped[int | None] = mapped_column(
+        Integer,
+        Computed(
+            "CASE WHEN ended_at IS NULL "
+            "THEN property_listing_id ELSE NULL END",
+            persisted=True,
+        ),
+        nullable=True,
     )

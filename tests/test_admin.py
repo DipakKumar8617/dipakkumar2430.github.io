@@ -15,6 +15,10 @@ from backend.app.models import (
     StaffInvitation,
     UserAccount,
 )
+from datetime import datetime, timezone
+
+import pytest
+from sqlalchemy.exc import IntegrityError
 
 
 TEST_PASSWORD = "StrongAdminPass123!"
@@ -881,8 +885,68 @@ def test_property_assignment_is_exclusive_across_channel_partners(client):
         assert assignments[0].channel_partner_account_id == first_cp_id
 
 
+def test_database_enforces_one_active_assignment_and_preserves_history(client):
+    admin_id = _create_account("admin", "db-constraint-admin@example.test")
+    cp_id = _create_account("channel partner", "db-constraint-cp@example.test")
+    other_cp_id = _create_account(
+        "channel partner",
+        "db-constraint-other-cp@example.test",
+    )
+    property_id = _create_assignment_test_property()
+    ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    with Session(engine) as db:
+        # Multiple ended assignments for the same property are valid history.
+        db.add_all(
+            [
+                PropertyChannelPartnerAssignment(
+                    property_listing_id=property_id,
+                    channel_partner_account_id=cp_id,
+                    assigned_by_account_id=admin_id,
+                    ended_at=ended_at,
+                    ended_by_account_id=admin_id,
+                ),
+                PropertyChannelPartnerAssignment(
+                    property_listing_id=property_id,
+                    channel_partner_account_id=other_cp_id,
+                    assigned_by_account_id=admin_id,
+                    ended_at=ended_at,
+                    ended_by_account_id=admin_id,
+                ),
+                PropertyChannelPartnerAssignment(
+                    property_listing_id=property_id,
+                    channel_partner_account_id=cp_id,
+                    assigned_by_account_id=admin_id,
+                ),
+            ]
+        )
+        db.commit()
+
+    # A second active assignment must fail at the database constraint.
+    with Session(engine) as db:
+        db.add(
+            PropertyChannelPartnerAssignment(
+                property_listing_id=property_id,
+                channel_partner_account_id=other_cp_id,
+                assigned_by_account_id=admin_id,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db.commit()
+
+    with Session(engine) as db:
+        assignments = db.scalars(
+            select(PropertyChannelPartnerAssignment).where(
+                PropertyChannelPartnerAssignment.property_listing_id == property_id
+            )
+        ).all()
+
+        assert len(assignments) == 3
+        assert sum(item.ended_at is None for item in assignments) == 1
+
+
 def test_admin_can_revoke_and_reassign_property(client):
-    _create_account("admin", "reassign-admin@example.test")
+    admin_id = _create_account("admin", "reassign-admin@example.test")
     first_cp_id = _create_account("channel partner", "reassign-cp1@example.test")
     second_cp_id = _create_account("channel partner", "reassign-cp2@example.test")
     property_id = _create_assignment_test_property()
@@ -899,13 +963,22 @@ def test_admin_can_revoke_and_reassign_property(client):
     revoked = client.delete(endpoint)
     assert revoked.status_code == 200
     assert revoked.json()["previous_channel_partner_account_id"] == first_cp_id
+    assert revoked.json()["ended_at"] is not None
+    assert revoked.json()["ended_by_account_id"] == admin_id
 
     with Session(engine) as db:
-        assert db.scalar(
-            select(PropertyChannelPartnerAssignment).where(
+        assignments = db.scalars(
+            select(PropertyChannelPartnerAssignment)
+            .where(
                 PropertyChannelPartnerAssignment.property_listing_id == property_id
             )
-        ) is None
+            .order_by(PropertyChannelPartnerAssignment.id)
+        ).all()
+
+        assert len(assignments) == 1
+        assert assignments[0].channel_partner_account_id == first_cp_id
+        assert assignments[0].ended_at is not None
+        assert assignments[0].ended_by_account_id == admin_id
 
     reassigned = client.post(
         endpoint,
@@ -915,19 +988,32 @@ def test_admin_can_revoke_and_reassign_property(client):
     assert reassigned.json()["channel_partner_account_id"] == second_cp_id
 
     with Session(engine) as db:
-        assignment = db.scalar(
-            select(PropertyChannelPartnerAssignment).where(
+        assignments = db.scalars(
+            select(PropertyChannelPartnerAssignment)
+            .where(
                 PropertyChannelPartnerAssignment.property_listing_id == property_id
             )
-        )
+            .order_by(PropertyChannelPartnerAssignment.id)
+        ).all()
+
         actions = db.scalars(
             select(StaffAuditLog.action).where(
                 StaffAuditLog.details["property_listing_id"].as_integer() == property_id
             )
         ).all()
 
-        assert assignment is not None
-        assert assignment.channel_partner_account_id == second_cp_id
+        assert len(assignments) == 2
+
+        # First CP's historical assignment remains preserved.
+        assert assignments[0].channel_partner_account_id == first_cp_id
+        assert assignments[0].ended_at is not None
+        assert assignments[0].ended_by_account_id == admin_id
+
+        # Second CP is the only active assignment.
+        assert assignments[1].channel_partner_account_id == second_cp_id
+        assert assignments[1].ended_at is None
+        assert assignments[1].ended_by_account_id is None
+
         assert actions.count("property.channel_partner.assigned") == 2
         assert actions.count("property.channel_partner.revoked") == 1
 
