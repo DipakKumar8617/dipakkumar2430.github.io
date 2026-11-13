@@ -193,6 +193,33 @@
       margin-top: 28px;
     }
 
+    .shortlist-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 18px;
+      border: 1px solid var(--brass);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--brass);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .shortlist-toggle:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .shortlist-status {
+      margin: 0;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
     .continue-button {
       display: flex;
       align-items: center;
@@ -499,6 +526,17 @@
               Continue with this property
             </button>
 
+            <button
+              id="shortlistToggleButton"
+              class="shortlist-toggle"
+              type="button"
+              disabled
+            >
+              Checking shortlist...
+            </button>
+            <p id="shortlistToggleStatus" class="shortlist-status" role="status" aria-live="polite"></p>
+            <a id="shortlistToggleSignIn" href="/index.html#login" hidden>Sign in to save this property</a>
+
             <a class="detail-back-link" href="/inventory">
               Back to all properties
             </a>
@@ -562,6 +600,121 @@
 
     const continueButton =
       document.getElementById('continueButton');
+    const shortlistToggleButton =
+      document.getElementById('shortlistToggleButton');
+    const shortlistToggleStatus =
+      document.getElementById('shortlistToggleStatus');
+    const shortlistToggleSignIn =
+      document.getElementById('shortlistToggleSignIn');
+
+    let isPropertyShortlisted = false;
+
+    function updateShortlistToggle() {
+      shortlistToggleButton.textContent = isPropertyShortlisted
+        ? 'Remove from shortlist'
+        : 'Save to shortlist';
+      shortlistToggleButton.setAttribute(
+        'aria-pressed', String(isPropertyShortlisted)
+      );
+    }
+
+    async function loadPropertyShortlistState(propertyId) {
+      shortlistToggleButton.disabled = true;
+      shortlistToggleStatus.textContent = 'Checking your shortlist...';
+      shortlistToggleSignIn.hidden = true;
+
+      try {
+        const response = await fetch('/api/buyer/shortlist', {
+          headers: { Accept: 'application/json' }
+        });
+
+        if (response.status === 401) {
+          shortlistToggleButton.disabled = false;
+          shortlistToggleButton.textContent = 'Save to shortlist';
+          shortlistToggleStatus.textContent = 'Sign in as a buyer to save this property.';
+          shortlistToggleSignIn.href = `/index.html?next=${encodeURIComponent(
+            window.location.pathname + window.location.search
+          )}#login`;
+          shortlistToggleSignIn.hidden = false;
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Your shortlist could not be checked right now.');
+        }
+
+        const records = await response.json();
+        if (!Array.isArray(records)) {
+          throw new Error('The shortlist response was invalid.');
+        }
+
+        isPropertyShortlisted = records.some(
+          (record) => Number(record?.property?.id) === Number(propertyId)
+        );
+        updateShortlistToggle();
+        shortlistToggleButton.disabled = false;
+        shortlistToggleStatus.textContent = isPropertyShortlisted
+          ? 'This property is in your shortlist.'
+          : 'Save this property to compare it with your other options.';
+      } catch (error) {
+        shortlistToggleButton.disabled = false;
+        shortlistToggleButton.textContent = 'Save to shortlist';
+        shortlistToggleStatus.textContent =
+          error.message || 'Your shortlist is temporarily unavailable.';
+      }
+    }
+
+    shortlistToggleButton.addEventListener('click', async () => {
+      const propertyId = getPropertyId();
+      if (!propertyId || shortlistToggleButton.disabled) return;
+
+      shortlistToggleButton.disabled = true;
+      shortlistToggleSignIn.hidden = true;
+      shortlistToggleStatus.textContent = isPropertyShortlisted
+        ? 'Removing property from your shortlist...'
+        : 'Saving property to your shortlist...';
+
+      try {
+        const response = await fetch(
+          `/api/buyer/shortlist/${propertyId}`,
+          {
+            method: isPropertyShortlisted ? 'DELETE' : 'POST',
+            headers: { Accept: 'application/json' }
+          }
+        );
+        const result = await response.json().catch(() => null);
+
+        if (response.status === 401) {
+          shortlistToggleStatus.textContent = 'Sign in as a buyer to manage your shortlist.';
+          shortlistToggleSignIn.href = `/index.html?next=${encodeURIComponent(
+            window.location.pathname + window.location.search
+          )}#login`;
+          shortlistToggleSignIn.hidden = false;
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            typeof result?.detail === 'string'
+              ? result.detail
+              : 'The shortlist could not be updated. Please try again.'
+          );
+        }
+
+        isPropertyShortlisted = !isPropertyShortlisted;
+        updateShortlistToggle();
+        shortlistToggleStatus.textContent = isPropertyShortlisted
+          ? (result?.already_saved
+              ? 'This property was already in your shortlist.'
+              : 'Property saved to your shortlist.')
+          : 'Property removed from your shortlist.';
+      } catch (error) {
+        shortlistToggleStatus.textContent =
+          error.message || 'The shortlist could not be updated.';
+      } finally {
+        shortlistToggleButton.disabled = false;
+      }
+    });
 
     // --------------------------------------------------
     // PROPERTY ID
@@ -737,6 +890,7 @@
       // Preserve the selected property through existing buyer flow.
 
       continueButton.disabled = false;
+      loadPropertyShortlistState(property.id);
 
       continueButton.addEventListener('click', () => {
         const params = new URLSearchParams({

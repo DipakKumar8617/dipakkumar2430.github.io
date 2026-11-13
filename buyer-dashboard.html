@@ -293,6 +293,67 @@
 
 
 
+  <style>
+    .buyer-shortlist-section {
+      margin: 28px 0;
+      padding: 20px;
+      border: 1px solid #e3e7ed;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .shortlist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+    }
+    .shortlist-card {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid #e3e7ed;
+      border-radius: 10px;
+    }
+    .shortlist-card h3 { margin: 0 0 8px; font-size: 16px; }
+    .shortlist-card p { color: #64748b; font-size: 13px; }
+    .shortlist-card a { color: inherit; }
+    .shortlist-card-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .shortlist-card-actions button,
+    .shortlist-comparison button {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .shortlist-remove { color: #a12b2b; }
+    .shortlist-availability {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      font-size: 12px;
+    }
+    .shortlist-comparison { margin-top: 28px; }
+    .shortlist-comparison-result {
+      overflow-x: auto;
+      margin-top: 14px;
+    }
+    .shortlist-comparison-result table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+    }
+    .shortlist-comparison-result th,
+    .shortlist-comparison-result td {
+      padding: 11px;
+      border: 1px solid #e3e7ed;
+      text-align: left;
+      font-size: 13px;
+    }
+    .shortlist-comparison-result th { background: #f8fafc; }
+  </style>
 </head>
 
 <body>
@@ -423,9 +484,9 @@
 
           <h3>Saved properties</h3>
 
-          <p>Shortlists and comparison will be linked to your buyer account.</p>
+          <p>Manage saved properties and compare your shortlisted options.</p>
 
-          <span class="coming">Next phase &middot; Not connected</span>
+          <a class="action-secondary" href="#buyerShortlist">Open my shortlist</a>
 
         </article>
 
@@ -535,6 +596,30 @@
 
         <div id="recentlyViewedList" class="recently-viewed-grid"></div>
 
+      </section>
+
+      <section id="buyerShortlist" class="buyer-shortlist-section" aria-labelledby="shortlistHeading">
+        <div class="section-head">
+          <div>
+            <h2 id="shortlistHeading">My shortlist</h2>
+            <p>Your saved properties and their latest availability status.</p>
+          </div>
+          <a href="/inventory">Explore properties</a>
+        </div>
+        <p id="shortlistStatus" class="status" role="status" aria-live="polite">Loading your shortlist...</p>
+        <div id="shortlistList" class="shortlist-grid"></div>
+
+        <div class="shortlist-comparison">
+          <div class="section-head">
+            <div>
+              <h3>Compare properties</h3>
+              <p>Select between 2 and 4 saved properties to compare.</p>
+            </div>
+            <button id="compareShortlistButton" type="button" disabled>Compare selected</button>
+          </div>
+          <p id="shortlistCompareStatus" class="status" role="status" aria-live="polite"></p>
+          <div id="shortlistComparison" class="shortlist-comparison-result"></div>
+        </div>
       </section>
 
       <section class="site-visits-section" aria-labelledby="siteVisitsHeading">
@@ -841,6 +926,256 @@
       }
     }
 
+    // --------------------------------------------------
+    // BUYER PROPERTY SHORTLIST AND COMPARISON
+    // --------------------------------------------------
+
+    const selectedShortlistIds = new Set();
+
+    function updateShortlistCompareButton() {
+      const button = document.getElementById('compareShortlistButton');
+      button.disabled = selectedShortlistIds.size < 2 || selectedShortlistIds.size > 4;
+    }
+
+    async function compareShortlistedProperties() {
+      const status = document.getElementById('shortlistCompareStatus');
+      const resultContainer = document.getElementById('shortlistComparison');
+      const ids = [...selectedShortlistIds];
+
+      resultContainer.replaceChildren();
+
+      if (ids.length < 2 || ids.length > 4) {
+        status.textContent = 'Select between 2 and 4 properties.';
+        return;
+      }
+
+      status.textContent = 'Comparing selected properties...';
+
+      try {
+        const params = new URLSearchParams();
+        ids.forEach((id) => params.append('property_ids', String(id)));
+        const response = await fetch(
+          `/api/buyer/shortlist/compare?${params.toString()}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.detail === 'string'
+              ? payload.detail
+              : 'The selected properties could not be compared.'
+          );
+        }
+
+        if (!Array.isArray(payload?.items) || payload.items.length !== ids.length) {
+          throw new Error('The comparison response was incomplete. Please try again.');
+        }
+
+        const fields = [
+          ['Property', (p) => p.title || '?'],
+          ['Type', (p) => String(p.property_type || '?').replaceAll('_', ' ')],
+          ['Location', (p) => [p.city, p.state].filter(Boolean).join(', ') || '?'],
+          ['Price', (p) => p.price_inr == null
+            ? 'Price on enquiry'
+            : new Intl.NumberFormat('en-IN', {
+                style: 'currency', currency: 'INR', maximumFractionDigits: 0
+              }).format(p.price_inr)],
+          ['Bedrooms', (p) => p.bedrooms == null ? '?' : String(p.bedrooms)],
+          ['Area', (p) => p.area_sqft == null
+            ? '?'
+            : `${Number(p.area_sqft).toLocaleString('en-IN')} sq.ft.`],
+          ['Availability', (p) => String(p.availability_status || 'unknown').replaceAll('_', ' ')]
+        ];
+
+        const table = document.createElement('table');
+        const head = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const labelHeader = document.createElement('th');
+        labelHeader.scope = 'col';
+        labelHeader.textContent = 'Details';
+        headerRow.appendChild(labelHeader);
+
+        payload.items.forEach((property) => {
+          const cell = document.createElement('th');
+          cell.scope = 'col';
+          cell.textContent = property.title || 'Property';
+          headerRow.appendChild(cell);
+        });
+
+        head.appendChild(headerRow);
+        table.appendChild(head);
+
+        const body = document.createElement('tbody');
+        fields.forEach(([label, getter]) => {
+          const row = document.createElement('tr');
+          const heading = document.createElement('th');
+          heading.scope = 'row';
+          heading.textContent = label;
+          row.appendChild(heading);
+
+          payload.items.forEach((property) => {
+            const cell = document.createElement('td');
+            cell.textContent = getter(property);
+            row.appendChild(cell);
+          });
+
+          body.appendChild(row);
+        });
+
+        table.appendChild(body);
+        resultContainer.appendChild(table);
+        status.textContent = `Comparing ${payload.items.length} saved properties.`;
+      } catch (error) {
+        status.textContent = error.message || 'Comparison is temporarily unavailable.';
+      }
+    }
+
+    async function loadBuyerShortlist() {
+      const status = document.getElementById('shortlistStatus');
+      const list = document.getElementById('shortlistList');
+      const comparison = document.getElementById('shortlistComparison');
+
+      list.replaceChildren();
+      comparison.replaceChildren();
+      selectedShortlistIds.clear();
+      updateShortlistCompareButton();
+
+      try {
+        const response = await fetch('/api/buyer/shortlist', {
+          headers: { Accept: 'application/json' }
+        });
+
+        if (response.status === 401) {
+          status.textContent = 'Sign in as a buyer to view your saved properties.';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Your shortlist is currently unavailable.');
+        }
+
+        const records = await response.json();
+
+        if (!Array.isArray(records) || records.length === 0) {
+          status.textContent = 'Your shortlist is empty. Save properties from their detail pages to compare them here.';
+          return;
+        }
+
+        let rendered = 0;
+
+        records.forEach((record) => {
+          const property = record?.property;
+          if (!property || !Number.isInteger(property.id)) return;
+
+          rendered += 1;
+          const card = document.createElement('article');
+          card.className = 'shortlist-card';
+
+          const title = document.createElement('h3');
+          const link = document.createElement('a');
+          link.href = `/property/${property.id}`;
+          link.textContent = property.title || 'Property';
+          title.appendChild(link);
+          card.appendChild(title);
+
+          const location = document.createElement('p');
+          location.textContent =
+            [property.city, property.state].filter(Boolean).join(', ') || 'Location unavailable';
+          card.appendChild(location);
+
+          const price = document.createElement('p');
+          price.textContent = property.price_inr == null
+            ? 'Price on enquiry'
+            : new Intl.NumberFormat('en-IN', {
+                style: 'currency', currency: 'INR', maximumFractionDigits: 0
+              }).format(property.price_inr);
+          card.appendChild(price);
+
+          const availability = document.createElement('span');
+          availability.className = 'shortlist-availability';
+          availability.textContent =
+            String(property.availability_status || 'unknown').replaceAll('_', ' ');
+          card.appendChild(availability);
+
+          const actions = document.createElement('div');
+          actions.className = 'shortlist-card-actions';
+
+          const compareLabel = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = String(property.id);
+          checkbox.setAttribute('aria-label', `Select ${property.title || 'property'} for comparison`);
+
+          checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+              if (selectedShortlistIds.size >= 4) {
+                checkbox.checked = false;
+                status.textContent = 'You can compare up to 4 properties at a time.';
+                return;
+              }
+              selectedShortlistIds.add(property.id);
+            } else {
+              selectedShortlistIds.delete(property.id);
+            }
+            updateShortlistCompareButton();
+          });
+
+          compareLabel.append(checkbox, document.createTextNode(' Compare'));
+          actions.appendChild(compareLabel);
+
+          const removeButton = document.createElement('button');
+          removeButton.type = 'button';
+          removeButton.className = 'shortlist-remove';
+          removeButton.textContent = 'Remove';
+          removeButton.addEventListener('click', async () => {
+            removeButton.disabled = true;
+            removeButton.textContent = 'Removing...';
+
+            try {
+              const removeResponse = await fetch(
+                `/api/buyer/shortlist/${property.id}`,
+                {
+                  method: 'DELETE',
+                  headers: { Accept: 'application/json' }
+                }
+              );
+              const removePayload = await removeResponse.json().catch(() => null);
+
+              if (!removeResponse.ok) {
+                throw new Error(
+                  typeof removePayload?.detail === 'string'
+                    ? removePayload.detail
+                    : 'This property could not be removed.'
+                );
+              }
+
+              await loadBuyerShortlist();
+            } catch (error) {
+              removeButton.disabled = false;
+              removeButton.textContent = 'Remove';
+              status.textContent = error.message || 'Unable to remove this property.';
+            }
+          });
+
+          actions.appendChild(removeButton);
+          card.appendChild(actions);
+          list.appendChild(card);
+        });
+
+        status.textContent = rendered
+          ? `${rendered} saved propert${rendered === 1 ? 'y' : 'ies'}.`
+          : 'No saved properties are available to display.';
+      } catch (error) {
+        status.textContent = error.message || 'Your shortlist is temporarily unavailable.';
+      }
+    }
+
+    document.getElementById('compareShortlistButton').addEventListener(
+      'click',
+      compareShortlistedProperties
+    );
+
     async function loadBuyerWorkspace() {
 
       const status = document.getElementById('pageStatus');
@@ -1010,6 +1345,8 @@
     loadRecentlyViewed();
 
     loadBuyerSiteVisits();
+
+    loadBuyerShortlist();
 
   </script>
 
