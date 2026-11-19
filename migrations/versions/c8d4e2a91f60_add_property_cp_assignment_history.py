@@ -11,6 +11,7 @@ depends_on = None
 
 
 TABLE = "property_channel_partner_assignments"
+PROPERTY_FK_INDEX = "ix_property_cp_assignment_property"
 
 
 def upgrade() -> None:
@@ -29,6 +30,15 @@ def upgrade() -> None:
         ["ended_by_account_id"],
         ["id"],
         ondelete="RESTRICT",
+    )
+
+    # MySQL requires an index supporting the property foreign key.
+    # Preserve that support before dropping the original unique index.
+    op.create_index(
+        PROPERTY_FK_INDEX,
+        TABLE,
+        ["property_listing_id"],
+        unique=False,
     )
 
     op.drop_constraint(
@@ -91,8 +101,15 @@ def downgrade() -> None:
     )
     op.drop_column(TABLE, "ended_by_account_id")
     op.drop_column(TABLE, "ended_at")
+
     op.create_unique_constraint(
         "uq_property_cp_assignment_property",
         TABLE,
         ["property_listing_id"],
+    )
+
+    # The restored unique index now supports the property foreign key.
+    op.drop_index(
+        PROPERTY_FK_INDEX,
+        table_name=TABLE,
     )
