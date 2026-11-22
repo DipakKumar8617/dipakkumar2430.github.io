@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .booking_service import create_booking
 from .auth_dependencies import resolve_session_account
 from .database import get_db
 from .models import TransactionEvent
@@ -20,6 +21,11 @@ from .transaction_service import (
     get_transaction,
     transition_transaction,
 )
+
+
+
+class BookingCreatePayload(BaseModel):
+    inventory_hold_id: int = Field(gt=0)
 
 router = APIRouter(prefix="/api/transactions", tags=["Transactions"])
 
@@ -272,3 +278,52 @@ def withdraw_offer_endpoint(
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Offer withdrawal conflicts with current records.") from exc
+
+
+@router.post("/{transaction_id}/booking")
+def create_booking_endpoint(
+    transaction_id: int,
+    payload: BookingCreatePayload,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    account = resolve_session_account(request, db)
+
+    if str(account.role or "").strip().casefold() != "buyer":
+        raise HTTPException(
+            status_code=403,
+            detail="Only the transaction buyer can create a booking.",
+        )
+
+    try:
+        booking = create_booking(
+            db,
+            transaction_id=transaction_id,
+            buyer_account_id=account.id,
+            inventory_hold_id=payload.inventory_hold_id,
+        )
+        db.commit()
+        db.refresh(booking)
+        return {
+            "id": booking.id,
+            "transaction_id": booking.transaction_id,
+            "inventory_item_id": booking.inventory_item_id,
+            "inventory_hold_id": booking.inventory_hold_id,
+            "buyer_account_id": booking.buyer_account_id,
+            "agreed_amount": str(booking.agreed_amount),
+            "currency": booking.currency,
+            "status": booking.status,
+            "expires_at": booking.expires_at.isoformat(),
+        }
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _raise_service_error(exc)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Booking conflicts with an existing booking or inventory hold.",
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
