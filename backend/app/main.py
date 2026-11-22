@@ -29,6 +29,7 @@ from .models import AuthIdentity, BuyerEnquiry, UserAccount
 from .security import hash_password, verify_password
 from .admin import admin_router, invitation_router
 from .staff_site_visits import router as staff_site_visits_router
+from .channel_partners import router as channel_partners_router
 from .developer_organizations import router as developer_organizations_router
 from .developer_inventory import router as developer_inventory_router
 from .transactions import router as transactions_router
@@ -43,6 +44,7 @@ app.include_router(developer_inventory_router)
 app.include_router(transactions_router)
 app.include_router(payments_router)
 app.include_router(staff_site_visits_router)
+app.include_router(channel_partners_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 validate_runtime_configuration(SESSION_SECRET, APP_ENV)
