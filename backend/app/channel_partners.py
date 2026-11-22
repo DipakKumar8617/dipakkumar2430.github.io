@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -6,6 +8,7 @@ from .auth_dependencies import resolve_session_account
 from .database import get_db
 from .models import (
     BuyerSiteVisit,
+    CommissionLedgerEntry,
     PropertyChannelPartnerAssignment,
     PropertyInventoryItem,
     PropertyListing,
@@ -270,4 +273,75 @@ def get_assigned_site_visit(
         "status": visit.status,
         "created_at": visit.created_at,
         "updated_at": visit.updated_at,
+    }
+
+
+@router.get("/earnings")
+def channel_partner_earnings(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return commission ledger and totals for the authenticated CP only."""
+    account = _require_channel_partner(request, db)
+
+    all_entries = db.scalars(
+        select(CommissionLedgerEntry)
+        .where(
+            CommissionLedgerEntry.channel_partner_account_id == account.id
+        )
+        .order_by(
+            CommissionLedgerEntry.created_at.desc(),
+            CommissionLedgerEntry.id.desc(),
+        )
+    ).all()
+
+    totals = {}
+    for entry in all_entries:
+        currency = entry.currency
+        bucket = totals.setdefault(
+            currency,
+            {
+                "pending": Decimal("0.00"),
+                "approved": Decimal("0.00"),
+                "rejected": Decimal("0.00"),
+                "gross_accrued": Decimal("0.00"),
+                "total_reversed": Decimal("0.00"),
+                "net_earnings": Decimal("0.00"),
+            },
+        )
+        amount = Decimal(str(entry.amount))
+        signed = amount if entry.entry_type == "accrual" else -amount
+
+        bucket[entry.approval_status] += signed
+        if entry.entry_type == "accrual":
+            bucket["gross_accrued"] += amount
+        else:
+            bucket["total_reversed"] += amount
+        bucket["net_earnings"] += signed
+
+    return {
+        "totals_by_currency": {
+            currency: {
+                key: str(value.quantize(Decimal("0.01")))
+                for key, value in bucket.items()
+            }
+            for currency, bucket in totals.items()
+        },
+        "items": [
+            {
+                "id": entry.id,
+                "transaction_id": entry.transaction_id,
+                "entry_type": entry.entry_type,
+                "original_accrual_id": entry.original_accrual_id,
+                "basis_amount": str(entry.basis_amount),
+                "amount": str(entry.amount),
+                "rate_bps": entry.rate_bps,
+                "currency": entry.currency,
+                "approval_status": entry.approval_status,
+                "reviewed_at": entry.reviewed_at,
+                "review_note": entry.review_note,
+                "created_at": entry.created_at,
+            }
+            for entry in all_entries[:200]
+        ],
     }
