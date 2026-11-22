@@ -119,6 +119,10 @@ class PropertyListing(Base):
             "bedrooms IS NULL OR bedrooms >= 0",
             name="ck_property_listing_bedrooms",
         ),
+        CheckConstraint(
+            "inventory_mode IN ('single', 'multi_unit')",
+            name="ck_property_listing_inventory_mode",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -143,12 +147,189 @@ class PropertyListing(Base):
     availability_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="available"
     )
+    inventory_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="single",
+        server_default="single",
+    )
     is_published: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
+
+class PropertyInventoryItem(Base):
+    """One independently purchasable property or unit within a listing."""
+
+    __tablename__ = "property_inventory_items"
+
+    __table_args__ = (
+        CheckConstraint(
+            "item_type IN ('single', 'unit')",
+            name="ck_property_inventory_item_type",
+        ),
+        CheckConstraint(
+            "(item_type = 'single' AND unit_code IS NULL) OR "
+            "(item_type = 'unit' AND unit_code IS NOT NULL)",
+            name="ck_property_inventory_item_unit_code",
+        ),
+        CheckConstraint(
+            "availability_status IN ('available', 'reserved', 'sold')",
+            name="ck_property_inventory_item_availability",
+        ),
+        CheckConstraint(
+            "price_inr IS NULL OR price_inr >= 0",
+            name="ck_property_inventory_item_price",
+        ),
+        CheckConstraint(
+            "bedrooms IS NULL OR bedrooms >= 0",
+            name="ck_property_inventory_item_bedrooms",
+        ),
+        CheckConstraint(
+            "area_sqft IS NULL OR area_sqft > 0",
+            name="ck_property_inventory_item_area",
+        ),
+        UniqueConstraint(
+            "property_listing_id",
+            "unit_code",
+            name="uq_property_inventory_listing_unit_code",
+        ),
+        Index(
+            "uq_property_inventory_single_listing",
+            "single_property_listing_id",
+            unique=True,
+        ),
+        Index(
+            "ix_property_inventory_listing",
+            "property_listing_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    property_listing_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_listings.id",
+            name="fk_property_inventory_item_listing",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    item_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    unit_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    price_inr: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    bedrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    area_sqft: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    availability_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="available",
+        server_default="available",
+    )
+
+    single_property_listing_id: Mapped[int | None] = mapped_column(
+        Integer,
+        Computed(
+            "CASE WHEN item_type = 'single' "
+            "THEN property_listing_id ELSE NULL END",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class InventoryHold(Base):
+    """Temporary exclusive hold on one independently purchasable item."""
+
+    __tablename__ = "inventory_holds"
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'converted', 'released', 'expired')",
+            name="ck_inventory_hold_status",
+        ),
+        Index(
+            "uq_inventory_hold_active_item",
+            "active_inventory_item_id",
+            unique=True,
+        ),
+        Index(
+            "ix_inventory_hold_item_expiry",
+            "inventory_item_id",
+            "status",
+            "expires_at",
+        ),
+        Index(
+            "ix_inventory_hold_buyer_created",
+            "buyer_account_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    inventory_item_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_inventory_items.id",
+            name="fk_inventory_hold_item",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    buyer_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_inventory_hold_buyer",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="active",
+        server_default="active",
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    active_inventory_item_id: Mapped[int | None] = mapped_column(
+        Integer,
+        Computed(
+            "CASE WHEN status = 'active' "
+            "THEN inventory_item_id ELSE NULL END",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
 
 class UserAccount(Base):
     """Account for manually registered RealIQ users."""
@@ -739,6 +920,10 @@ class PropertyChannelPartnerAssignment(Base):
             "uq_property_cp_assignment_active_property",
             "active_property_listing_id",
             unique=True,
+        ),
+        Index(
+            "ix_property_cp_assignment_property",
+            "property_listing_id",
         ),
         Index(
             "ix_property_cp_assignment_partner",
