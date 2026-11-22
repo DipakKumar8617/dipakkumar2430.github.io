@@ -148,7 +148,7 @@ def test_confirmed_refund_records_ledger_and_marks_processed(monkeypatch):
         "record_verified_refund",
         fake_record_verified_refund,
     )
-    db = FakeDB([refund, captured_payment()])
+    db = FakeDB([refund.payment_attempt_id, captured_payment(), refund])
 
     result = refund_service.record_provider_confirmed_refund(
         db,
@@ -180,7 +180,7 @@ def test_processed_refund_is_idempotent(monkeypatch):
         "record_verified_refund",
         lambda *args, **kwargs: calls.append(kwargs),
     )
-    db = FakeDB([refund, captured_payment()])
+    db = FakeDB([refund.payment_attempt_id, captured_payment(), refund])
 
     result = refund_service.record_provider_confirmed_refund(
         db,
@@ -214,7 +214,7 @@ def test_confirmed_refund_rejects_mismatched_provider_details(
         "record_verified_refund",
         lambda *args, **kwargs: calls.append(kwargs),
     )
-    db = FakeDB([refund, captured_payment()])
+    db = FakeDB([refund.payment_attempt_id, captured_payment(), refund])
 
     with pytest.raises(ValueError):
         refund_service.record_provider_confirmed_refund(
