@@ -4,10 +4,11 @@ All functions flush but never commit. The API or job caller owns the
 transaction boundary. Only trusted provider adapters should call functions
 that record verified financial outcomes.
 """
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .models import (
@@ -38,7 +39,7 @@ ALLOWED_TRANSITIONS = {
 
 
 def _now():
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _money(value):
@@ -310,7 +311,7 @@ def record_verified_webhook(
     signature_verified: bool,
     metadata: dict | None = None,
 ):
-    """Persist a webhook only after the provider adapter verifies its signature."""
+    """Persist a verified webhook; tolerate concurrent duplicate inserts."""
     if signature_verified is not True:
         raise PermissionError("Unverified webhook events cannot enter the trusted event store.")
 
@@ -319,13 +320,15 @@ def record_verified_webhook(
     event_type = _required_text(event_type, "Event type", 120)
     digest = _required_text(payload_hash, "Payload hash", 64)
 
-    existing = db.execute(
-        select(PaymentWebhookEvent).where(
-            PaymentWebhookEvent.provider == provider,
-            PaymentWebhookEvent.provider_event_id == event_id,
-        )
-    ).scalar_one_or_none()
+    def find_existing():
+        return db.execute(
+            select(PaymentWebhookEvent).where(
+                PaymentWebhookEvent.provider == provider,
+                PaymentWebhookEvent.provider_event_id == event_id,
+            )
+        ).scalar_one_or_none()
 
+    existing = find_existing()
     if existing is not None:
         if existing.payload_hash != digest or existing.event_type != event_type:
             raise ValueError("Duplicate provider event ID has conflicting content.")
@@ -340,9 +343,63 @@ def record_verified_webhook(
         processing_status="received",
         event_metadata=metadata,
     )
-    db.add(event)
+
+    try:
+        # The savepoint keeps the caller's outer transaction usable if another
+        # worker wins the provider/event unique-key race.
+        with db.begin_nested():
+            db.add(event)
+            db.flush()
+        return event
+    except IntegrityError:
+        existing = find_existing()
+        if existing is None:
+            raise
+        if existing.payload_hash != digest or existing.event_type != event_type:
+            raise ValueError("Duplicate provider event ID has conflicting content.")
+        return existing
+
+
+def claim_webhook_processing(
+    db: Session,
+    webhook_event_id: int,
+    *,
+    stale_after_seconds: int = 300,
+) -> bool:
+    """Atomically claim a received/failed event or reclaim an expired lease."""
+    if stale_after_seconds < 1:
+        raise ValueError("Webhook lease duration must be positive.")
+
+    now = _now()
+    stale_before = now - timedelta(seconds=stale_after_seconds)
+
+    eligible = or_(
+        PaymentWebhookEvent.processing_status.in_(("received", "failed")),
+        and_(
+            PaymentWebhookEvent.processing_status == "processing",
+            PaymentWebhookEvent.processing_started_at.is_not(None),
+            PaymentWebhookEvent.processing_started_at <= stale_before,
+        ),
+    )
+
+    result = db.execute(
+        update(PaymentWebhookEvent)
+        .where(
+            PaymentWebhookEvent.id == webhook_event_id,
+            PaymentWebhookEvent.signature_verified.is_(True),
+            eligible,
+        )
+        .values(
+            processing_status="processing",
+            processing_started_at=now,
+            processing_attempts=PaymentWebhookEvent.processing_attempts + 1,
+            processed_at=None,
+            error_code=None,
+        )
+        .execution_options(synchronize_session=False)
+    )
     db.flush()
-    return event
+    return result.rowcount == 1
 
 
 def mark_webhook_processed(
@@ -373,6 +430,7 @@ def mark_webhook_processed(
     event.error_code = (
         _required_text(error_code, "Error code", 100) if error_code else None
     )
+    event.processing_started_at = None
     event.processed_at = _now()
     db.flush()
     return event

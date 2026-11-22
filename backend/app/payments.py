@@ -18,6 +18,7 @@ from .auth_dependencies import resolve_session_account
 from .database import get_db
 from .models import Booking, PaymentAttempt, PaymentRefund, PaymentWebhookEvent
 from .payment_service import (
+    claim_webhook_processing,
     create_payment_attempt,
     mark_webhook_processed,
     record_verified_capture,
@@ -48,8 +49,6 @@ class RefundCreatePayload(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
 
 
-class RefundCreatePayload(BaseModel):
-    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
 
 
 def _payment_data(payment):
@@ -389,7 +388,7 @@ def verify_checkout_payment(
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment attempt not found.")
 
-    if payment.provider != "razorpay" or not payment.provider_payment_id:
+    if payment.provider != 'razorpay':
         raise HTTPException(
             status_code=409,
             detail="Payment has no verified Razorpay payment ID.",
@@ -472,6 +471,22 @@ def verify_checkout_payment(
         ) from exc
 
 
+def _mark_webhook_failed_safely(db: Session, webhook_event_id: int | None, code: str):
+    """Persist a retryable failure without masking the original webhook error."""
+    if webhook_event_id is None:
+        return
+    try:
+        db.rollback()
+        mark_webhook_processed(
+            db,
+            webhook_event_id,
+            error_code=code,
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
 @router.post("/payments/webhooks/razorpay")
 async def razorpay_webhook(
     request: Request,
@@ -505,6 +520,7 @@ async def razorpay_webhook(
 
     digest = hashlib.sha256(raw_body).hexdigest()
 
+    webhook_event_id = None
     try:
         event = record_verified_webhook(
             db,
@@ -515,11 +531,24 @@ async def razorpay_webhook(
             signature_verified=True,
             metadata={"event": event_type},
         )
+        webhook_event_id = event.id
 
-        # Duplicate delivery is acknowledged without repeating financial writes.
+        # Terminal deliveries are acknowledged without repeating financial writes.
         if event.processing_status in {"processed", "ignored"}:
             db.commit()
             return {"success": True, "duplicate": True}
+
+        # Only one worker can acquire this lease. A crashed worker becomes
+        # reclaimable after five minutes; every claim is committed before
+        # network I/O or financial processing starts.
+        if not claim_webhook_processing(db, webhook_event_id):
+            db.commit()
+            return {
+                "success": True,
+                "duplicate": True,
+                "in_progress": True,
+            }
+        db.commit()
 
         if event_type == "payment.captured":
             entity = (
@@ -624,14 +653,253 @@ async def razorpay_webhook(
         return {"success": True, "processed": True}
 
     except (PermissionError, LookupError, ValueError, RazorpayVerificationError) as exc:
-        db.rollback()
+        _mark_webhook_failed_safely(db, webhook_event_id, "webhook_validation_failed")
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except HTTPException as exc:
+        _mark_webhook_failed_safely(db, webhook_event_id, "webhook_http_processing_failed")
+        raise
     except IntegrityError as exc:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Webhook conflicts with existing payment records.") from exc
+        _mark_webhook_failed_safely(db, webhook_event_id, "webhook_integrity_conflict")
+        raise HTTPException(
+            status_code=409,
+            detail="Webhook conflicts with existing payment records.",
+        ) from exc
     except RazorpayError as exc:
-        db.rollback()
+        _mark_webhook_failed_safely(db, webhook_event_id, "razorpay_verification_unavailable")
         raise HTTPException(
             status_code=502,
             detail="Unable to verify webhook payment with Razorpay. Provider will retry delivery.",
+        ) from exc
+    except Exception as exc:
+        _mark_webhook_failed_safely(db, webhook_event_id, "webhook_processing_error")
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook processing failed. Provider should retry delivery.",
+        ) from exc
+
+@router.post("/payments/refunds/{refund_id}/recover")
+def recover_payment_refund(
+    refund_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Reconcile an ambiguous refund against authoritative Razorpay records."""
+    from .models import PaymentRefund
+    from .refund_service import (
+        record_provider_confirmed_refund,
+        update_refund_submission,
+    )
+
+    account = resolve_session_account(request, db)
+    if str(account.role or "").strip().casefold() != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access is required.")
+
+    refund = db.scalar(
+        select(PaymentRefund).where(PaymentRefund.id == refund_id)
+    )
+    if refund is None:
+        raise HTTPException(status_code=404, detail="Refund request not found.")
+
+    payment = db.scalar(
+        select(PaymentAttempt).where(
+            PaymentAttempt.id == refund.payment_attempt_id
+        )
+    )
+    if payment is None or payment.provider != "razorpay" or not payment.provider_payment_id:
+        raise HTTPException(status_code=409, detail="Refund has no valid Razorpay payment.")
+
+    if refund.status == "processed":
+        return {
+            "id": refund.id,
+            "status": refund.status,
+            "provider_refund_id": refund.provider_refund_id,
+            "message": "Refund is already reconciled.",
+        }
+
+    gateway = RazorpayGateway()
+    try:
+        provider_refund_id = refund.provider_refund_id
+
+        if provider_refund_id:
+            verified = gateway.verify_refund(
+                refund_id=provider_refund_id,
+                expected_payment_id=payment.provider_payment_id,
+                expected_amount=refund.amount,
+                expected_currency=refund.currency,
+            )
+        else:
+            # Search provider records. Never issue another refund request here.
+            matches = {}
+            for offset in range(0, 1000, 100):
+                page = gateway.fetch_payment_refunds(
+                    payment.provider_payment_id,
+                    count=100,
+                    skip=offset,
+                )
+                for item in page:
+                    notes = item.get("notes")
+                    notes = notes if isinstance(notes, dict) else {}
+                    receipt_match = item.get("receipt") == f"refund-{refund.id}"
+                    internal_id_match = str(
+                        notes.get("internal_refund_id") or ""
+                    ) == str(refund.id)
+                    if receipt_match or internal_id_match:
+                        item_id = item.get("id")
+                        if item_id:
+                            matches[str(item_id)] = item
+                if len(page) < 100:
+                    break
+
+            # A full final page means the bounded search may have omitted
+            # older provider records. Never treat a partial search as unique.
+            if offset == 900 and len(page) == 100:
+                update_refund_submission(
+                    db,
+                    refund.id,
+                    status="unknown",
+                    failure_code="provider_refund_search_limit_reached",
+                )
+                db.commit()
+                return {
+                    "id": refund.id,
+                    "status": "unknown",
+                    "message": (
+                        "Provider refund search reached its safety limit. "
+                        "No new refund was submitted; manual investigation is required."
+                    ),
+                }
+
+            if len(matches) == 0:
+                update_refund_submission(
+                    db,
+                    refund.id,
+                    status="unknown",
+                    failure_code="provider_refund_not_found",
+                )
+                db.commit()
+                return {
+                    "id": refund.id,
+                    "status": "unknown",
+                    "message": (
+                        "No matching provider refund was found. No new refund was submitted; "
+                        "manual investigation is required."
+                    ),
+                }
+
+            if len(matches) != 1:
+                update_refund_submission(
+                    db,
+                    refund.id,
+                    status="unknown",
+                    failure_code="multiple_provider_refunds_found",
+                )
+                db.commit()
+                raise HTTPException(
+                    status_code=409,
+                    detail="Multiple provider refunds match this request; manual investigation is required.",
+                )
+
+            provider_refund_id = next(iter(matches))
+            verified = gateway.verify_refund(
+                refund_id=provider_refund_id,
+                expected_payment_id=payment.provider_payment_id,
+                expected_amount=refund.amount,
+                expected_currency=refund.currency,
+            )
+
+        if verified["status"] == "processed":
+            record_provider_confirmed_refund(
+                db,
+                refund.id,
+                provider_refund_id=verified["id"],
+                provider_payment_id=verified["payment_id"],
+                amount=verified["amount"],
+                currency=verified["currency"],
+            )
+        else:
+            update_refund_submission(
+                db,
+                refund.id,
+                status=verified["status"],
+                provider_refund_id=verified["id"],
+            )
+
+        db.commit()
+        db.refresh(refund)
+        return {
+            "id": refund.id,
+            "status": refund.status,
+            "provider_refund_id": refund.provider_refund_id,
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except (RazorpayError, RazorpayVerificationError) as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to reconcile the refund with Razorpay. Its state remains unresolved.",
+        ) from exc
+    except (PermissionError, LookupError, ValueError, IntegrityError) as exc:
+        db.rollback()
+        _service_error(exc)
+
+
+@router.post("/payments/{payment_attempt_id}/recover-booking")
+def recover_captured_booking(
+    payment_attempt_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Retry booking confirmation for a previously captured payment."""
+    account = resolve_session_account(request, db)
+    if str(account.role or "").strip().casefold() != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access is required.")
+
+    payment = db.scalar(
+        select(PaymentAttempt).where(
+            PaymentAttempt.id == payment_attempt_id
+        )
+    )
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment attempt not found.")
+
+    if payment.status != "captured":
+        raise HTTPException(
+            status_code=409,
+            detail="Only captured payments can enter booking recovery.",
+        )
+
+    if not payment.booking_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Captured payment is not linked to a booking.",
+        )
+
+    try:
+        booking = confirm_booking_after_capture(
+            db,
+            booking_id=payment.booking_id,
+            payment_attempt_id=payment.id,
+        )
+        db.commit()
+        db.refresh(booking)
+        db.refresh(payment)
+        return {
+            "booking_id": booking.id,
+            "payment_attempt_id": payment.id,
+            "booking_status": booking.status,
+            "payment_status": payment.status,
+            "message": "Booking confirmation recovery completed.",
+        }
+    except Exception as exc:
+        db.rollback()
+        _mark_booking_confirmation_failed(db, payment.id)
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Booking recovery could not complete. The captured payment remains recorded; "
+                "investigate the inventory hold and transaction state."
+            ),
         ) from exc

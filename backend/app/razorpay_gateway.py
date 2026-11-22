@@ -184,8 +184,8 @@ class RazorpayGateway:
                 "currency": "INR",
                 "receipt": receipt,
                 "notes": {
-                    "realiq_payment_attempt_id": str(payment_attempt_id),
                     **(notes or {}),
+                    "realiq_payment_attempt_id": str(payment_attempt_id),
                 },
             },
         )
@@ -329,45 +329,35 @@ class RazorpayGateway:
             "status": payload.get("status"),
         }
 
+    def fetch_payment_refunds(
+        self,
+        payment_id: str,
+        *,
+        count: int = 100,
+        skip: int = 0,
+    ) -> list[dict]:
+        """Fetch one page of refunds associated with a Razorpay payment."""
+        payment_id = _required_id(payment_id, "Razorpay payment ID")
+        if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 100:
+            raise ValueError("Refund page count must be between 1 and 100.")
+        if isinstance(skip, bool) or not isinstance(skip, int) or skip < 0:
+            raise ValueError("Refund page offset must be non-negative.")
+
+        payload = self._request(
+            "GET",
+            f"/payments/{quote(payment_id, safe='')}/refunds?count={count}&skip={skip}",
+        )
+        items = payload.get("items") if isinstance(payload, dict) else None
+        if not isinstance(items, list) or any(not isinstance(item, dict) for item in items):
+            raise RazorpayVerificationError("Razorpay returned an invalid refunds collection.")
+        return items
+
     def fetch_refund(self, refund_id: str) -> dict:
         refund_id = _required_id(refund_id, "Razorpay refund ID")
         return self._request(
             "GET",
             f"/refunds/{quote(refund_id, safe='')}",
         )
-
-    def verify_refund(
-        self,
-        *,
-        refund_id: str,
-        expected_payment_id: str,
-        expected_amount: Decimal | str | int | float,
-        expected_currency: str = "INR",
-    ) -> dict:
-        """Fetch and validate authoritative provider refund state."""
-        payload = self.fetch_refund(refund_id)
-        expected_paise = _minor_units(expected_amount, expected_currency)
-
-        if payload.get("id") != refund_id:
-            raise RazorpayVerificationError("Refund ID does not match.")
-        if payload.get("payment_id") != expected_payment_id:
-            raise RazorpayVerificationError("Refund payment ID does not match.")
-        if payload.get("amount") != expected_paise:
-            raise RazorpayVerificationError("Refund amount does not match.")
-        if str(payload.get("currency", "")).upper() != expected_currency.upper():
-            raise RazorpayVerificationError("Refund currency does not match.")
-
-        status = str(payload.get("status") or "").strip().lower()
-        if status not in {"pending", "processed", "failed"}:
-            raise RazorpayVerificationError("Razorpay returned an unknown refund status.")
-
-        return {
-            "id": refund_id,
-            "payment_id": expected_payment_id,
-            "amount": Decimal(expected_paise) / Decimal(100),
-            "currency": expected_currency.upper(),
-            "status": status,
-        }
 
     def verify_refund(
         self,

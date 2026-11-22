@@ -1545,7 +1545,7 @@ class PaymentWebhookEvent(Base):
     __table_args__ = (
         UniqueConstraint("provider", "provider_event_id", name="uq_payment_webhook_provider_event"),
         CheckConstraint(
-            "processing_status IN ('received', 'processed', 'ignored', 'failed')",
+            "processing_status IN ('received', 'processing', 'processed', 'ignored', 'failed')",
             name="ck_payment_webhook_processing_status",
         ),
         Index("ix_payment_webhook_status_received", "processing_status", "received_at"),
@@ -1563,6 +1563,10 @@ class PaymentWebhookEvent(Base):
         String(20), nullable=False, default="received", server_default="received"
     )
     event_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    processing_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     received_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
