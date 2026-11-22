@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import hmac
 import secrets
 import re
@@ -28,6 +28,7 @@ from .admin import admin_router, invitation_router
 from .staff_site_visits import router as staff_site_visits_router
 from .developer_organizations import router as developer_organizations_router
 from .developer_inventory import router as developer_inventory_router
+from .transactions import router as transactions_router
 
 app = FastAPI(title="RealIQ Authentication API")
 app.include_router(buyer_router)
@@ -35,6 +36,7 @@ app.include_router(admin_router)
 app.include_router(invitation_router)
 app.include_router(developer_organizations_router)
 app.include_router(developer_inventory_router)
+app.include_router(transactions_router)
 app.include_router(staff_site_visits_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()

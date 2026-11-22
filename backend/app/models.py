@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     Index,
     Integer,
     JSON,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -1209,4 +1211,116 @@ class TransactionEvent(Base):
         DateTime,
         nullable=False,
         server_default=func.now(),
+    )
+
+class TransactionOffer(Base):
+    """An immutable negotiation proposal or counteroffer in a transaction."""
+
+    __tablename__ = "transaction_offers"
+
+    __table_args__ = (
+        CheckConstraint(
+            "amount > 0",
+            name="ck_transaction_offer_amount_positive",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'rejected', "
+            "'countered', 'withdrawn', 'expired')",
+            name="ck_transaction_offer_status",
+        ),
+        Index(
+            "uq_transaction_offer_active_pending",
+            "active_pending_transaction_id",
+            unique=True,
+        ),
+        Index(
+            "ix_transaction_offer_transaction_created",
+            "transaction_id",
+            "created_at",
+        ),
+        Index(
+            "ix_transaction_offer_proposer_created",
+            "proposer_account_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    transaction_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "real_estate_transactions.id",
+            name="fk_transaction_offer_transaction",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    proposer_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_transaction_offer_proposer",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    parent_offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "transaction_offers.id",
+            name="fk_transaction_offer_parent",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2),
+        nullable=False,
+    )
+
+    currency: Mapped[str] = mapped_column(
+        String(3),
+        nullable=False,
+        default="INR",
+        server_default="INR",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    responded_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    active_pending_transaction_id: Mapped[int | None] = mapped_column(
+        Integer,
+        Computed(
+            "CASE WHEN status = 'pending' THEN transaction_id ELSE NULL END",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
