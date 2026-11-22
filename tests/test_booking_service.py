@@ -193,3 +193,64 @@ def test_confirmation_rejects_uncaptured_payment():
         )
 
     db.flush.assert_not_called()
+
+
+def test_confirmed_booking_replay_requires_same_payment_attempt():
+    db = MagicMock()
+    booking = SimpleNamespace(
+        id=50,
+        transaction_id=10,
+        status="confirmed",
+        agreed_amount=Decimal("125000.00"),
+        currency="INR",
+    )
+    payment = SimpleNamespace(
+        id=60,
+        booking_id=50,
+        status="captured",
+        amount=Decimal("125000.00"),
+        currency="INR",
+        failure_code="booking_confirmation_failed",
+    )
+    event = SimpleNamespace(details={"payment_attempt_id": 60})
+    db.scalar.side_effect = [booking, payment, event]
+
+    result = confirm_booking_after_capture(
+        db,
+        booking_id=50,
+        payment_attempt_id=60,
+    )
+
+    assert result is booking
+    assert payment.failure_code is None
+    db.add.assert_not_called()
+
+
+def test_confirmed_booking_rejects_a_different_payment_attempt():
+    db = MagicMock()
+    booking = SimpleNamespace(
+        id=50,
+        transaction_id=10,
+        status="confirmed",
+        agreed_amount=Decimal("125000.00"),
+        currency="INR",
+    )
+    payment = SimpleNamespace(
+        id=61,
+        booking_id=50,
+        status="captured",
+        amount=Decimal("125000.00"),
+        currency="INR",
+        failure_code=None,
+    )
+    event = SimpleNamespace(details={"payment_attempt_id": 60})
+    db.scalar.side_effect = [booking, payment, event]
+
+    with pytest.raises(ValueError, match="different payment attempt"):
+        confirm_booking_after_capture(
+            db,
+            booking_id=50,
+            payment_attempt_id=61,
+        )
+
+    db.add.assert_not_called()

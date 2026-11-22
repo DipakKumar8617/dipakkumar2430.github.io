@@ -637,6 +637,13 @@ async def razorpay_webhook(
                     "Razorpay has not confirmed this failed payment."
                 )
 
+            # A failed payment attempt may be delivered after a successful
+            # retry on the same Razorpay order. Never regress a paid order.
+            if payment.status in {"captured", "partially_refunded", "refunded"}:
+                mark_webhook_processed(db, event.id, ignored=True)
+                db.commit()
+                return {"success": True, "ignored": True}
+
             update_payment_status(
                 db,
                 payment.id,
