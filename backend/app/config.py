@@ -22,3 +22,12 @@ if INVENTORY_HOLD_DURATION_MINUTES <= 0:
     raise RuntimeError(
         "INVENTORY_HOLD_DURATION_MINUTES must be greater than zero."
     )
+
+# Razorpay server-side payment gateway configuration.
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "").strip()
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "").strip()
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "").strip()
+RAZORPAY_BASE_URL = os.getenv(
+    "RAZORPAY_BASE_URL",
+    "https://api.razorpay.com/v1",
+).strip().rstrip("/")

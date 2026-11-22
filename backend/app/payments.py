@@ -1,0 +1,637 @@
+"""Authenticated Razorpay payment API.
+
+The browser never determines payment success. Checkout verification and
+webhook processing both verify payment state directly with Razorpay.
+"""
+import hashlib
+import json
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from .booking_service import confirm_booking_after_capture
+from .auth_dependencies import resolve_session_account
+from .database import get_db
+from .models import Booking, PaymentAttempt, PaymentRefund, PaymentWebhookEvent
+from .payment_service import (
+    create_payment_attempt,
+    mark_webhook_processed,
+    record_verified_capture,
+    record_verified_webhook,
+    update_payment_status,
+)
+from .razorpay_gateway import (
+    RazorpayError,
+    RazorpayGateway,
+    RazorpayVerificationError,
+)
+from .refund_service import (
+    create_refund_request,
+    record_provider_confirmed_refund,
+    update_refund_submission,
+)
+
+router = APIRouter(prefix="/api", tags=["Payments"])
+
+
+class CheckoutVerification(BaseModel):
+    razorpay_order_id: str = Field(min_length=1, max_length=128)
+    razorpay_payment_id: str = Field(min_length=1, max_length=128)
+    razorpay_signature: str = Field(min_length=1, max_length=128)
+
+
+class RefundCreatePayload(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+
+
+class RefundCreatePayload(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+
+
+def _payment_data(payment):
+    return {
+        "id": payment.id,
+        "booking_id": payment.booking_id,
+        "amount": str(payment.amount),
+        "currency": payment.currency,
+        "provider": payment.provider,
+        "provider_order_id": payment.provider_order_id,
+        "provider_payment_id": payment.provider_payment_id,
+        "status": payment.status,
+        "created_at": payment.created_at,
+        "updated_at": payment.updated_at,
+    }
+
+
+def _service_error(exc):
+    if isinstance(exc, PermissionError):
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if isinstance(exc, LookupError):
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    raise exc
+
+
+def _buyer_account(request, db):
+    account = resolve_session_account(request, db)
+    if str(account.role or "").strip().casefold() != "buyer":
+        raise HTTPException(
+            status_code=403,
+            detail="Only the booking buyer can perform this payment action.",
+        )
+    return account
+
+
+
+
+def _mark_booking_confirmation_failed(db: Session, payment_attempt_id: int):
+    """Persist a reconciliation marker without undoing a verified capture."""
+    db.rollback()
+    payment = db.scalar(
+        select(PaymentAttempt)
+        .where(PaymentAttempt.id == payment_attempt_id)
+        .with_for_update()
+    )
+    if payment is None or payment.status != "captured":
+        db.rollback()
+        raise RuntimeError("Captured payment could not be located for reconciliation.")
+
+    payment.failure_code = "booking_confirmation_failed"
+    db.commit()
+
+
+@router.post("/bookings/{booking_id}/payments", status_code=201)
+def create_booking_payment(
+    booking_id: int,
+    request: Request,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key",
+        min_length=1,
+        max_length=128,
+    ),
+    db: Session = Depends(get_db),
+):
+    account = _buyer_account(request, db)
+
+    try:
+        payment = create_payment_attempt(
+            db,
+            booking_id=booking_id,
+            buyer_account_id=account.id,
+            provider="razorpay",
+            idempotency_key=idempotency_key,
+        )
+        db.commit()
+        db.refresh(payment)
+
+        # A retry with the same key reuses an already-created Razorpay order.
+        if payment.provider_order_id:
+            return {
+                "payment": _payment_data(payment),
+                "checkout": {
+                    "key_id": RazorpayGateway().config.key_id,
+                    "order_id": payment.provider_order_id,
+                    "amount": int(payment.amount * 100),
+                    "currency": payment.currency,
+                },
+            }
+
+        gateway = RazorpayGateway()
+        order = gateway.create_order(
+            payment_attempt_id=payment.id,
+            amount=payment.amount,
+            currency=payment.currency,
+        )
+
+        payment.provider_order_id = order["id"]
+        update_payment_status(db, payment.id, "pending")
+        db.commit()
+        db.refresh(payment)
+
+        return {
+            "payment": _payment_data(payment),
+            "checkout": {
+                "key_id": gateway.config.key_id,
+                "order_id": order["id"],
+                "amount": order["amount"],
+                "currency": order["currency"],
+            },
+        }
+
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _service_error(exc)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A conflicting payment attempt already exists. Retry with the same idempotency key.",
+        ) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Payment gateway is temporarily unavailable. Retry using the same idempotency key.",
+        ) from exc
+
+
+@router.get("/payments/{payment_attempt_id}")
+def get_payment(
+    payment_attempt_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    account = _buyer_account(request, db)
+    payment = db.scalar(
+        select(PaymentAttempt).where(
+            PaymentAttempt.id == payment_attempt_id,
+            PaymentAttempt.buyer_account_id == account.id,
+        )
+    )
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment attempt not found.")
+    return _payment_data(payment)
+
+
+@router.post("/payments/{payment_attempt_id}/refunds", status_code=202)
+def create_payment_refund(
+    payment_attempt_id: int,
+    payload: RefundCreatePayload,
+    request: Request,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key",
+        min_length=1,
+        max_length=128,
+    ),
+    db: Session = Depends(get_db),
+):
+    account = resolve_session_account(request, db)
+    if str(account.role or "").strip().casefold() != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can initiate payment refunds.",
+        )
+
+    payment = db.scalar(
+        select(PaymentAttempt).where(
+            PaymentAttempt.id == payment_attempt_id
+        )
+    )
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment attempt not found.")
+
+    if payment.provider != "razorpay" or not payment.provider_payment_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Payment has no verified Razorpay payment ID.",
+        )
+
+    # Never resubmit an existing ambiguous request: the provider may
+    # already have accepted it even if our original request timed out.
+    existing = db.scalar(
+        select(PaymentRefund).where(
+            PaymentRefund.provider == payment.provider,
+            PaymentRefund.idempotency_key == idempotency_key,
+        )
+    )
+    if existing is not None:
+        same_request = (
+            existing.payment_attempt_id == payment.id
+            and Decimal(str(existing.amount)) == Decimal(str(payload.amount))
+            and existing.currency == payment.currency
+        )
+        if not same_request:
+            raise HTTPException(
+                status_code=409,
+                detail="Idempotency key was already used for a different refund request.",
+            )
+
+        return {
+            "id": existing.id,
+            "payment_attempt_id": existing.payment_attempt_id,
+            "amount": str(existing.amount),
+            "currency": existing.currency,
+            "status": existing.status,
+            "provider_refund_id": existing.provider_refund_id,
+            "message": "Existing refund request returned; no duplicate provider request was made.",
+        }
+
+    try:
+        refund = create_refund_request(
+            db,
+            payment_attempt_id=payment_attempt_id,
+            amount=payload.amount,
+            idempotency_key=idempotency_key,
+        )
+        db.commit()
+        db.refresh(refund)
+
+        # Atomically claim submission to prevent concurrent provider requests.
+        claim = db.execute(
+            update(PaymentRefund)
+            .where(
+                PaymentRefund.id == refund.id,
+                PaymentRefund.status == "requested",
+            )
+            .values(status="submitted")
+        )
+        db.commit()
+
+        if claim.rowcount != 1:
+            db.refresh(refund)
+            return {
+                "id": refund.id,
+                "payment_attempt_id": refund.payment_attempt_id,
+                "amount": str(refund.amount),
+                "currency": refund.currency,
+                "status": refund.status,
+                "provider_refund_id": refund.provider_refund_id,
+                "message": "Refund is already being processed; no duplicate provider request was made.",
+            }
+
+        gateway = RazorpayGateway()
+
+        provider_refund = gateway.create_refund(
+            payment_id=payment.provider_payment_id,
+            amount=refund.amount,
+            currency=refund.currency,
+            receipt=f"refund-{refund.id}",
+            notes={"internal_refund_id": str(refund.id)},
+        )
+
+        update_refund_submission(
+            db,
+            refund.id,
+            status="unknown",
+            provider_refund_id=provider_refund["id"],
+        )
+        db.commit()
+
+        verified = gateway.verify_refund(
+            refund_id=provider_refund["id"],
+            expected_payment_id=payment.provider_payment_id,
+            expected_amount=refund.amount,
+            expected_currency=refund.currency,
+        )
+
+        if verified["status"] == "processed":
+            record_provider_confirmed_refund(
+                db,
+                refund.id,
+                provider_refund_id=verified["id"],
+                provider_payment_id=verified["payment_id"],
+                amount=verified["amount"],
+                currency=verified["currency"],
+            )
+        else:
+            update_refund_submission(
+                db,
+                refund.id,
+                status=verified["status"],
+            )
+
+        db.commit()
+        db.refresh(refund)
+
+        return {
+            "id": refund.id,
+            "payment_attempt_id": refund.payment_attempt_id,
+            "amount": str(refund.amount),
+            "currency": refund.currency,
+            "status": refund.status,
+            "provider_refund_id": refund.provider_refund_id,
+        }
+
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _service_error(exc)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Refund conflicts with an existing request or ledger entry.",
+        ) from exc
+    except RazorpayVerificationError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Refund provider state could not be verified. The request is retained for reconciliation.",
+        ) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Refund outcome is unknown. The request is retained; do not submit another refund.",
+        ) from exc
+
+
+
+
+@router.post("/payments/{payment_attempt_id}/verify")
+def verify_checkout_payment(
+    payment_attempt_id: int,
+    payload: CheckoutVerification,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    account = _buyer_account(request, db)
+    payment = db.scalar(
+        select(PaymentAttempt).where(
+            PaymentAttempt.id == payment_attempt_id,
+            PaymentAttempt.buyer_account_id == account.id,
+        )
+    )
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment attempt not found.")
+
+    if payment.provider != "razorpay" or not payment.provider_payment_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Payment has no verified Razorpay payment ID.",
+        )
+
+    if payment.provider != "razorpay" or not payment.provider_order_id:
+        raise HTTPException(status_code=409, detail="Payment has no valid Razorpay order.")
+
+    try:
+        gateway = RazorpayGateway()
+
+        if payload.razorpay_order_id != payment.provider_order_id:
+            raise HTTPException(status_code=409, detail="Razorpay order does not match this payment.")
+
+        if not gateway.verify_checkout_signature(
+            order_id=payload.razorpay_order_id,
+            payment_id=payload.razorpay_payment_id,
+            signature=payload.razorpay_signature,
+        ):
+            raise HTTPException(status_code=400, detail="Payment signature is invalid.")
+
+        verified = gateway.verify_captured_payment(
+            payment_id=payload.razorpay_payment_id,
+            expected_order_id=payment.provider_order_id,
+            expected_amount=payment.amount,
+            expected_currency=payment.currency,
+        )
+
+        record_verified_capture(
+            db,
+            payment.id,
+            provider_transaction_id=verified["payment_id"],
+            provider_payment_id=verified["payment_id"],
+            amount=payment.amount,
+            currency=payment.currency,
+        )
+        # Preserve the verified capture even if booking confirmation fails.
+        db.commit()
+
+        try:
+            confirm_booking_after_capture(
+                db,
+                booking_id=payment.booking_id,
+                payment_attempt_id=payment.id,
+            )
+            db.commit()
+        except Exception as exc:
+            _mark_booking_confirmation_failed(db, payment.id)
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Payment was captured, but booking confirmation failed. "
+                    "Reconciliation is required; retry verification later."
+                ),
+            ) from exc
+
+        db.refresh(payment)
+        return _payment_data(payment)
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _service_error(exc)
+    except RazorpayVerificationError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify payment with the gateway. Please retry.",
+        ) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Payment verification conflicts with an existing ledger entry.",
+        ) from exc
+
+
+@router.post("/payments/webhooks/razorpay")
+async def razorpay_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+    signature: str | None = Header(default=None, alias="X-Razorpay-Signature"),
+    event_id: str | None = Header(default=None, alias="X-Razorpay-Event-Id"),
+):
+    raw_body = await request.body()
+    gateway = RazorpayGateway()
+
+    if not signature or not gateway.verify_webhook_signature(
+        raw_body=raw_body,
+        signature=signature,
+    ):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature.")
+
+    if not event_id or len(event_id) > 160:
+        raise HTTPException(status_code=400, detail="Missing or invalid webhook event ID.")
+
+    try:
+        payload = json.loads(raw_body)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid webhook payload.") from exc
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid webhook payload.")
+
+    event_type = str(payload.get("event") or "").strip()
+    if not event_type or len(event_type) > 120:
+        raise HTTPException(status_code=400, detail="Invalid webhook event type.")
+
+    digest = hashlib.sha256(raw_body).hexdigest()
+
+    try:
+        event = record_verified_webhook(
+            db,
+            provider="razorpay",
+            provider_event_id=event_id,
+            event_type=event_type,
+            payload_hash=digest,
+            signature_verified=True,
+            metadata={"event": event_type},
+        )
+
+        # Duplicate delivery is acknowledged without repeating financial writes.
+        if event.processing_status in {"processed", "ignored"}:
+            db.commit()
+            return {"success": True, "duplicate": True}
+
+        if event_type == "payment.captured":
+            entity = (
+                payload.get("payload", {})
+                .get("payment", {})
+                .get("entity", {})
+            )
+            provider_payment_id = entity.get("id")
+            provider_order_id = entity.get("order_id")
+
+            if not provider_payment_id or not provider_order_id:
+                raise ValueError("Captured payment webhook is missing payment identifiers.")
+
+            payment = db.scalar(
+                select(PaymentAttempt).where(
+                    PaymentAttempt.provider == "razorpay",
+                    PaymentAttempt.provider_order_id == provider_order_id,
+                )
+            )
+            if payment is None:
+                raise LookupError("No internal payment matches this Razorpay order.")
+
+            verified = gateway.verify_captured_payment(
+                payment_id=provider_payment_id,
+                expected_order_id=payment.provider_order_id,
+                expected_amount=payment.amount,
+                expected_currency=payment.currency,
+            )
+
+            record_verified_capture(
+                db,
+                payment.id,
+                provider_transaction_id=verified["payment_id"],
+                provider_payment_id=verified["payment_id"],
+                amount=payment.amount,
+                currency=payment.currency,
+            )
+            # Preserve the verified capture even if booking confirmation fails.
+            db.commit()
+
+            try:
+                confirm_booking_after_capture(
+                    db,
+                    booking_id=payment.booking_id,
+                    payment_attempt_id=payment.id,
+                )
+                db.commit()
+            except Exception as exc:
+                _mark_booking_confirmation_failed(db, payment.id)
+                raise HTTPException(
+                    status_code=500,
+                    detail="Captured payment requires booking reconciliation.",
+                ) from exc
+
+        elif event_type == "payment.failed":
+            entity = (
+                payload.get("payload", {})
+                .get("payment", {})
+                .get("entity", {})
+            )
+            provider_payment_id = entity.get("id")
+            provider_order_id = entity.get("order_id")
+
+            if not provider_order_id:
+                raise ValueError("Failed payment webhook is missing its order ID.")
+
+            payment = db.scalar(
+                select(PaymentAttempt).where(
+                    PaymentAttempt.provider == "razorpay",
+                    PaymentAttempt.provider_order_id == provider_order_id,
+                )
+            )
+            if payment is None:
+                raise LookupError("No internal payment matches this Razorpay order.")
+
+            provider_state = (
+                gateway.fetch_payment(provider_payment_id)
+                if provider_payment_id else {}
+            )
+            if (
+                provider_state.get("order_id") != payment.provider_order_id
+                or provider_state.get("status") != "failed"
+            ):
+                raise RazorpayVerificationError(
+                    "Razorpay has not confirmed this failed payment."
+                )
+
+            update_payment_status(
+                db,
+                payment.id,
+                "failed",
+                failure_code="provider_payment_failed",
+            )
+
+        else:
+            mark_webhook_processed(db, event.id, ignored=True)
+            db.commit()
+            return {"success": True, "ignored": True}
+
+        mark_webhook_processed(db, event.id)
+        db.commit()
+        return {"success": True, "processed": True}
+
+    except (PermissionError, LookupError, ValueError, RazorpayVerificationError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Webhook conflicts with existing payment records.") from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify webhook payment with Razorpay. Provider will retry delivery.",
+        ) from exc

@@ -1447,3 +1447,251 @@ class Booking(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+class PaymentAttempt(Base):
+    """A provider-backed attempt to collect a booking payment."""
+
+    __tablename__ = "payment_attempts"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_payment_attempt_amount_positive"),
+        CheckConstraint(
+            "status IN ('created', 'pending', 'authorized', 'captured', "
+            "'failed', 'cancelled', 'partially_refunded', 'refunded')",
+            name="ck_payment_attempt_status",
+        ),
+        UniqueConstraint(
+            "provider", "idempotency_key",
+            name="uq_payment_attempt_provider_idempotency",
+        ),
+        UniqueConstraint(
+            "provider", "provider_order_id",
+            name="uq_payment_attempt_provider_order",
+        ),
+        UniqueConstraint(
+            "provider", "provider_payment_id",
+            name="uq_payment_attempt_provider_payment",
+        ),
+        Index("ix_payment_attempt_booking_created", "booking_id", "created_at"),
+        Index("ix_payment_attempt_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    booking_id: Mapped[int] = mapped_column(
+        ForeignKey("bookings.id", name="fk_payment_attempt_booking", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    buyer_account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", name="fk_payment_attempt_buyer", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    provider_order_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="created", server_default="created"
+    )
+    failure_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PaymentLedgerEntry(Base):
+    """Append-only record of a provider-confirmed financial movement."""
+
+    __tablename__ = "payment_ledger_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "entry_type IN ('capture', 'refund', 'reversal', 'chargeback')",
+            name="ck_payment_ledger_entry_type",
+        ),
+        CheckConstraint("amount > 0", name="ck_payment_ledger_amount_positive"),
+        UniqueConstraint(
+            "provider", "provider_transaction_id",
+            name="uq_payment_ledger_provider_transaction",
+        ),
+        Index("ix_payment_ledger_payment_created", "payment_attempt_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payment_attempt_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "payment_attempts.id",
+            name="fk_payment_ledger_payment_attempt",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider_transaction_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class PaymentWebhookEvent(Base):
+    """Deduplicated provider webhook receipt and processing state."""
+
+    __tablename__ = "payment_webhook_events"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_event_id", name="uq_payment_webhook_provider_event"),
+        CheckConstraint(
+            "processing_status IN ('received', 'processed', 'ignored', 'failed')",
+            name="ck_payment_webhook_processing_status",
+        ),
+        Index("ix_payment_webhook_status_received", "processing_status", "received_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider_event_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    signature_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    processing_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="received", server_default="received"
+    )
+    event_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class PaymentReconciliationBatch(Base):
+    """A reconciliation run against one provider and reporting period."""
+
+    __tablename__ = "payment_reconciliation_batches"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('running', 'completed', 'failed')",
+            name="ck_payment_reconciliation_batch_status",
+        ),
+        Index("ix_payment_reconciliation_provider_created", "provider", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    period_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="running", server_default="running"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PaymentReconciliationItem(Base):
+    """One provider statement line and its internal matching outcome."""
+
+    __tablename__ = "payment_reconciliation_items"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('matched', 'missing_internal', 'missing_provider', "
+            "'amount_mismatch', 'currency_mismatch')",
+            name="ck_payment_reconciliation_item_outcome",
+        ),
+        Index("ix_payment_reconciliation_item_batch", "batch_id"),
+        Index("ix_payment_reconciliation_item_payment", "payment_attempt_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "payment_reconciliation_batches.id",
+            name="fk_payment_reconciliation_item_batch",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+    payment_attempt_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "payment_attempts.id",
+            name="fk_payment_reconciliation_item_payment",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+    provider_transaction_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(24), nullable=False)
+    expected_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    actual_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
+from datetime import datetime
+
+
+class PaymentRefund(Base):
+    __tablename__ = "payment_refunds"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "idempotency_key",
+            name="uq_payment_refund_provider_idempotency",
+        ),
+        UniqueConstraint(
+            "provider",
+            "provider_refund_id",
+            name="uq_payment_refund_provider_refund_id",
+        ),
+        CheckConstraint(
+            "amount > 0",
+            name="ck_payment_refund_positive_amount",
+        ),
+        CheckConstraint(
+            "status IN ('requested', 'submitted', 'pending', 'unknown', 'processed', 'failed')",
+            name="ck_payment_refund_status",
+        ),
+        Index("ix_payment_refunds_payment_created", "payment_attempt_id", "created_at"),
+        Index("ix_payment_refunds_status_created", "status", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    payment_attempt_id = Column(
+        Integer,
+        ForeignKey("payment_attempts.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider = Column(String(40), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    provider_refund_id = Column(String(128), nullable=True)
+    amount = Column(Numeric(14, 2), nullable=False)
+    currency = Column(String(3), nullable=False, default="INR")
+    status = Column(String(20), nullable=False, default="requested")
+    failure_code = Column(String(100), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
