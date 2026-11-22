@@ -645,8 +645,31 @@ def reconcile_provider_statement(
         period_end=period_end,
         status="running",
     )
-    db.add(batch)
-    db.flush()
+    try:
+        # The unique constraint is the final arbiter when two workers submit
+        # the same statement concurrently. Keep a losing insert inside a
+        # savepoint so the caller's outer transaction remains usable.
+        with db.begin_nested():
+            db.add(batch)
+            db.flush()
+    except IntegrityError:
+        # A locking read is important on MySQL REPEATABLE READ: unlike a
+        # normal snapshot read, it can see the transaction that won the race.
+        existing = db.scalar(
+            select(PaymentReconciliationBatch)
+            .where(
+                PaymentReconciliationBatch.provider == provider,
+                PaymentReconciliationBatch.idempotency_key == key,
+            )
+            .with_for_update()
+        )
+        if existing is None:
+            raise
+        if existing.statement_hash != digest:
+            raise ValueError(
+                "Reconciliation idempotency key was reused with different statement content."
+            )
+        return existing
 
     ledger_entries = db.execute(
         select(PaymentLedgerEntry).where(

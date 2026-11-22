@@ -173,6 +173,24 @@ def record_provider_confirmed_refund(
     currency: str,
 ) -> PaymentRefund:
     """Record only after independently verifying the provider reports processed."""
+    # Discover the immutable payment association without locking the refund.
+    # All financial refund paths acquire locks in payment -> refund order.
+    payment_attempt_id = db.scalar(
+        select(PaymentRefund.payment_attempt_id).where(
+            PaymentRefund.id == refund_id
+        )
+    )
+    if payment_attempt_id is None:
+        raise LookupError("Refund request not found.")
+
+    payment = db.scalar(
+        select(PaymentAttempt)
+        .where(PaymentAttempt.id == payment_attempt_id)
+        .with_for_update()
+    )
+    if payment is None:
+        raise LookupError("Payment attempt not found.")
+
     refund = db.scalar(
         select(PaymentRefund)
         .where(PaymentRefund.id == refund_id)
@@ -180,19 +198,13 @@ def record_provider_confirmed_refund(
     )
     if refund is None:
         raise LookupError("Refund request not found.")
+    if refund.payment_attempt_id != payment.id:
+        raise ValueError("Refund payment association changed during processing.")
 
     provider_refund_id = _required_text(provider_refund_id, "Provider refund ID")
     provider_payment_id = _required_text(provider_payment_id, "Provider payment ID")
     amount = _money(amount)
     currency = _required_text(currency, "Currency", 3).upper()
-
-    payment = db.scalar(
-        select(PaymentAttempt)
-        .where(PaymentAttempt.id == refund.payment_attempt_id)
-        .with_for_update()
-    )
-    if payment is None:
-        raise LookupError("Payment attempt not found.")
 
     if payment.provider_payment_id != provider_payment_id:
         raise ValueError("Refund belongs to a different provider payment.")
