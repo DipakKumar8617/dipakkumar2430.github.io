@@ -31,3 +31,33 @@ RAZORPAY_BASE_URL = os.getenv(
     "RAZORPAY_BASE_URL",
     "https://api.razorpay.com/v1",
 ).strip().rstrip("/")
+
+
+def validate_runtime_configuration(
+    session_secret: str,
+    app_env: str = APP_ENV,
+) -> None:
+    """Reject unsafe or internally inconsistent runtime configuration."""
+    if not session_secret:
+        raise RuntimeError("SESSION_SECRET is missing from the project .env file.")
+
+    if app_env != "development" and len(session_secret) < 32:
+        raise RuntimeError(
+            "SESSION_SECRET must contain at least 32 characters outside development."
+        )
+
+    razorpay_values = (
+        RAZORPAY_KEY_ID,
+        RAZORPAY_KEY_SECRET,
+        RAZORPAY_WEBHOOK_SECRET,
+    )
+    configured = [bool(value) for value in razorpay_values]
+
+    if any(configured) and not all(configured):
+        raise RuntimeError(
+            "Configure RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and "
+            "RAZORPAY_WEBHOOK_SECRET together, or leave all three empty."
+        )
+
+    if all(configured) and not RAZORPAY_BASE_URL.startswith("https://"):
+        raise RuntimeError("RAZORPAY_BASE_URL must use HTTPS.")
