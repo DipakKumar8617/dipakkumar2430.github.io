@@ -62,9 +62,6 @@ def create_booking(
     if transaction.buyer_account_id != buyer_account_id:
         raise PermissionError("Only the transaction buyer can create its booking.")
 
-    if transaction.status != "terms_agreed":
-        raise ValueError("Transaction must have agreed terms before booking.")
-
     existing = db.scalar(
         select(Booking)
         .where(Booking.transaction_id == transaction_id)
@@ -79,6 +76,9 @@ def create_booking(
         ):
             return existing
         raise ValueError("A booking already exists for this transaction.")
+
+    if transaction.status != "terms_agreed":
+        raise ValueError("Transaction must have agreed terms before booking.")
 
     hold = db.scalar(
         select(InventoryHold)
