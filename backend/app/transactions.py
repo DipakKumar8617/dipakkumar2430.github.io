@@ -7,7 +7,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .booking_service import create_booking
-from .inventory_hold_service import create_inventory_hold
+from .inventory_hold_service import (
+    create_inventory_hold,
+    release_inventory_hold,
+)
 from .auth_dependencies import resolve_session_account
 from .database import get_db
 from .models import TransactionEvent
@@ -318,6 +321,51 @@ def create_inventory_hold_endpoint(
         raise HTTPException(
             status_code=409,
             detail="Inventory is already held by another buyer.",
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.post("/{transaction_id}/hold/{hold_id}/release")
+def release_inventory_hold_endpoint(
+    transaction_id: int,
+    hold_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    account = resolve_session_account(request, db)
+
+    if str(account.role or "").strip().casefold() != "buyer":
+        raise HTTPException(
+            status_code=403,
+            detail="Only buyers can release inventory holds.",
+        )
+
+    try:
+        hold = release_inventory_hold(
+            db,
+            transaction_id=transaction_id,
+            hold_id=hold_id,
+            buyer_account_id=account.id,
+        )
+        db.commit()
+        db.refresh(hold)
+        return {
+            "id": hold.id,
+            "inventory_item_id": hold.inventory_item_id,
+            "buyer_account_id": hold.buyer_account_id,
+            "status": hold.status,
+            "expires_at": hold.expires_at.isoformat(),
+        }
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _raise_service_error(exc)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Inventory hold release conflicts with current records.",
         ) from exc
     except Exception:
         db.rollback()
