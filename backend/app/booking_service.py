@@ -218,6 +218,26 @@ def confirm_booking_after_capture(
         raise ValueError("Payment amount does not match the booking amount.")
 
     if booking.status == "confirmed":
+        confirmation_event = db.scalar(
+            select(TransactionEvent)
+            .where(
+                TransactionEvent.transaction_id == booking.transaction_id,
+                TransactionEvent.event_type == "booking_payment_confirmed",
+            )
+            .order_by(TransactionEvent.id.desc())
+            .limit(1)
+        )
+        details = (
+            confirmation_event.details
+            if confirmation_event is not None
+            and isinstance(confirmation_event.details, dict)
+            else {}
+        )
+        if str(details.get("payment_attempt_id") or "") != str(payment.id):
+            raise ValueError(
+                "Booking was already confirmed by a different payment attempt "
+                "or its confirmation record cannot be verified."
+            )
         payment.failure_code = None
         db.flush()
         return booking

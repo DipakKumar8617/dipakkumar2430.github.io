@@ -1,6 +1,4 @@
 """Provider-neutral payment, ledger, webhook, and reconciliation services.
-import hashlib
-import json
 
 All functions flush but never commit. The API or job caller owns the
 transaction boundary. Only trusted provider adapters should call functions
@@ -98,9 +96,22 @@ def create_payment_attempt(
     provider: str,
     idempotency_key: str,
 ):
-    """Create or return the same attempt for a repeated idempotency key."""
+    """Return the booking's single provider order/attempt, creating it once.
+
+    The booking row is locked before checking for an existing attempt. This
+    serializes competing requests for the same booking on the production DB.
+    Razorpay payment retries should reuse the same order and internal attempt.
+    """
     provider = _provider(provider)
     key = _required_text(idempotency_key, "Idempotency key", 128)
+
+    def validate_key_match(attempt):
+        if (
+            attempt.booking_id != booking_id
+            or attempt.buyer_account_id != buyer_account_id
+        ):
+            raise ValueError("Idempotency key was already used for another payment.")
+        return attempt
 
     existing = db.execute(
         select(PaymentAttempt).where(
@@ -108,14 +119,8 @@ def create_payment_attempt(
             PaymentAttempt.idempotency_key == key,
         )
     ).scalar_one_or_none()
-
     if existing is not None:
-        if (
-            existing.booking_id != booking_id
-            or existing.buyer_account_id != buyer_account_id
-        ):
-            raise ValueError("Idempotency key was already used for another payment.")
-        return existing
+        return validate_key_match(existing)
 
     booking = db.execute(
         select(Booking)
@@ -127,6 +132,49 @@ def create_payment_attempt(
         raise LookupError("Booking not found.")
     if booking.buyer_account_id != buyer_account_id:
         raise PermissionError("Only the booking buyer can initiate its payment.")
+
+    # Recheck after acquiring the booking lock. A concurrent request using
+    # the same key may have created the attempt while this request was waiting.
+    existing = db.execute(
+        select(PaymentAttempt).where(
+            PaymentAttempt.provider == provider,
+            PaymentAttempt.idempotency_key == key,
+        ).with_for_update()
+    ).scalar_one_or_none()
+    if existing is not None:
+        return validate_key_match(existing)
+
+    attempts = db.execute(
+        select(PaymentAttempt)
+        .where(PaymentAttempt.booking_id == booking.id)
+        .order_by(PaymentAttempt.id.asc())
+        .with_for_update()
+    ).scalars().all()
+
+    if len(attempts) > 1:
+        raise ValueError(
+            "Multiple payment attempts already exist for this booking; "
+            "manual reconciliation is required."
+        )
+
+    if attempts:
+        existing_attempt = attempts[0]
+        if (
+            existing_attempt.buyer_account_id != buyer_account_id
+            or existing_attempt.provider != provider
+        ):
+            raise ValueError(
+                "An existing payment attempt conflicts with this booking."
+            )
+        if existing_attempt.status == "cancelled":
+            raise ValueError(
+                "The existing payment attempt was cancelled; "
+                "administrator reconciliation is required."
+            )
+        # A failed Razorpay payment can be retried against the same order.
+        # Never create another order merely because the client sent a new key.
+        return existing_attempt
+
     if booking.status != "awaiting_payment":
         raise ValueError("Booking is not awaiting payment.")
     if booking.expires_at <= _now():
@@ -210,7 +258,10 @@ def record_verified_capture(
             raise ValueError("Provider transaction ID conflicts with an existing ledger entry.")
         return duplicate
 
-    if payment.status not in {"created", "pending", "authorized"}:
+    # Razorpay can report one payment attempt as failed and then accept a
+    # retry against the same order. Only this independently verified capture
+    # path may recover that failed lifecycle state.
+    if payment.status not in {"created", "pending", "authorized", "failed"}:
         raise ValueError("Payment is not eligible for capture.")
     if amount != payment.amount or currency != payment.currency:
         raise ValueError("Capture amount or currency does not match the payment attempt.")
