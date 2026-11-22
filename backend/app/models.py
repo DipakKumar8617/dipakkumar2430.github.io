@@ -1324,3 +1324,126 @@ class TransactionOffer(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+class Booking(Base):
+    """A booking created through the shared transaction engine."""
+
+    __tablename__ = "bookings"
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('requested', 'awaiting_payment', 'confirmed', "
+            "'cancelled', 'expired')",
+            name="ck_booking_status",
+        ),
+        CheckConstraint(
+            "agreed_amount IS NULL OR agreed_amount > 0",
+            name="ck_booking_agreed_amount_positive",
+        ),
+        Index(
+            "uq_booking_transaction",
+            "transaction_id",
+            unique=True,
+        ),
+        Index(
+            "uq_booking_active_inventory_item",
+            "active_inventory_item_id",
+            unique=True,
+        ),
+        Index(
+            "ix_booking_buyer_created",
+            "buyer_account_id",
+            "created_at",
+        ),
+        Index(
+            "ix_booking_status_expiry",
+            "status",
+            "expires_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    transaction_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "real_estate_transactions.id",
+            name="fk_booking_transaction",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    inventory_item_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "property_inventory_items.id",
+            name="fk_booking_inventory_item",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    inventory_hold_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "inventory_holds.id",
+            name="fk_booking_inventory_hold",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+        unique=True,
+    )
+
+    buyer_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_booking_buyer",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    agreed_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(14, 2),
+        nullable=True,
+    )
+
+    currency: Mapped[str] = mapped_column(
+        String(3),
+        nullable=False,
+        default="INR",
+        server_default="INR",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="requested",
+        server_default="requested",
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+    )
+
+    active_inventory_item_id: Mapped[int | None] = mapped_column(
+        Integer,
+        Computed(
+            "CASE WHEN status IN ('requested', 'awaiting_payment', "
+            "'confirmed') THEN inventory_item_id ELSE NULL END",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
