@@ -7,6 +7,7 @@ from sqlalchemy import (
     Computed,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     JSON,
@@ -190,6 +191,12 @@ class PropertyInventoryItem(Base):
         CheckConstraint(
             "area_sqft IS NULL OR area_sqft > 0",
             name="ck_property_inventory_item_area",
+        ),
+        Index(
+            "uq_property_inventory_id_listing",
+            "id",
+            "property_listing_id",
+            unique=True,
         ),
         UniqueConstraint(
             "property_listing_id",
@@ -917,6 +924,12 @@ class PropertyChannelPartnerAssignment(Base):
 
     __table_args__ = (
         Index(
+            "uq_property_cp_assignment_id_partner",
+            "id",
+            "channel_partner_account_id",
+            unique=True,
+        ),
+        Index(
             "uq_property_cp_assignment_active_property",
             "active_property_listing_id",
             unique=True,
@@ -988,4 +1001,212 @@ class PropertyChannelPartnerAssignment(Base):
             persisted=True,
         ),
         nullable=True,
+    )
+
+class RealEstateTransaction(Base):
+    """A buyer's direct-booking or negotiated property transaction."""
+
+    __tablename__ = "real_estate_transactions"
+
+    __table_args__ = (
+        CheckConstraint(
+            "transaction_type IN ('direct_booking', 'negotiation')",
+            name="ck_real_estate_transaction_type",
+        ),
+        CheckConstraint(
+            "status IN ('initiated', 'under_review', 'negotiating', "
+            "'terms_agreed', 'booking_pending', 'booked', 'completed', "
+            "'cancelled', 'rejected', 'expired')",
+            name="ck_real_estate_transaction_status",
+        ),
+        CheckConstraint(
+            "(channel_partner_assignment_id IS NULL "
+            "AND channel_partner_account_id IS NULL) OR "
+            "(channel_partner_assignment_id IS NOT NULL "
+            "AND channel_partner_account_id IS NOT NULL)",
+            name="ck_real_estate_transaction_cp_snapshot",
+        ),
+        ForeignKeyConstraint(
+            ["inventory_item_id", "property_listing_id"],
+            ["property_inventory_items.id", "property_inventory_items.property_listing_id"],
+            name="fk_real_estate_transaction_inventory_listing",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["channel_partner_assignment_id", "channel_partner_account_id"],
+            ["property_channel_partner_assignments.id", "property_channel_partner_assignments.channel_partner_account_id"],
+            name="fk_real_estate_transaction_cp_snapshot_assignment",
+            ondelete="RESTRICT",
+        ),
+        Index(
+            "ix_real_estate_transaction_buyer_created",
+            "buyer_account_id",
+            "created_at",
+        ),
+        Index(
+            "ix_real_estate_transaction_inventory_status",
+            "inventory_item_id",
+            "status",
+        ),
+        Index(
+            "ix_real_estate_transaction_developer_status",
+            "developer_organization_id",
+            "status",
+        ),
+        Index(
+            "ix_real_estate_transaction_cp_status",
+            "channel_partner_account_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    buyer_account_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_real_estate_transaction_buyer",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    property_listing_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    inventory_item_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    developer_organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "developer_organizations.id",
+            name="fk_real_estate_transaction_developer",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    # Historical attribution snapshot: never replace these values when
+    # the property's active channel-partner assignment changes.
+    channel_partner_assignment_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    channel_partner_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_real_estate_transaction_cp_account",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    transaction_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="initiated",
+        server_default="initiated",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class TransactionEvent(Base):
+    """Append-only audit history for a real-estate transaction."""
+
+    __tablename__ = "transaction_events"
+
+    __table_args__ = (
+        CheckConstraint(
+            "from_status IS NULL OR from_status IN "
+            "('initiated', 'under_review', 'negotiating', 'terms_agreed', "
+            "'booking_pending', 'booked', 'completed', 'cancelled', "
+            "'rejected', 'expired')",
+            name="ck_transaction_event_from_status",
+        ),
+        CheckConstraint(
+            "to_status IS NULL OR to_status IN "
+            "('initiated', 'under_review', 'negotiating', 'terms_agreed', "
+            "'booking_pending', 'booked', 'completed', 'cancelled', "
+            "'rejected', 'expired')",
+            name="ck_transaction_event_to_status",
+        ),
+        Index(
+            "ix_transaction_event_transaction_created",
+            "transaction_id",
+            "created_at",
+        ),
+        Index(
+            "ix_transaction_event_actor_created",
+            "actor_account_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    transaction_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "real_estate_transactions.id",
+            name="fk_transaction_event_transaction",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+
+    actor_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "user_accounts.id",
+            name="fk_transaction_event_actor",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+
+    event_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    from_status: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    to_status: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    details: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
     )
