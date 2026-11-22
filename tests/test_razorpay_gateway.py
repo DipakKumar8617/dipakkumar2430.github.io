@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import hmac
 from decimal import Decimal
 
@@ -199,3 +199,57 @@ def test_rejects_unverified_capture_details(config, provider_payment):
             expected_order_id="order_123",
             expected_amount=Decimal("1250.50"),
         )
+
+
+def test_fetch_payment_refunds_uses_paginated_endpoint(monkeypatch):
+    gateway = RazorpayGateway.__new__(RazorpayGateway)
+    calls = []
+    monkeypatch.setattr(
+        gateway, "_request",
+        lambda method, path: (
+            calls.append((method, path)),
+            {"items": [{"id": "rfnd_1"}]},
+        )[1],
+    )
+
+    result = gateway.fetch_payment_refunds(
+        "pay_123", count=50, skip=100
+    )
+
+    assert result == [{"id": "rfnd_1"}]
+    assert calls == [(
+        "GET", "/payments/pay_123/refunds?count=50&skip=100"
+    )]
+
+
+@pytest.mark.parametrize(
+    ("count", "skip"),
+    [(0, 0), (101, 0), (True, 0), (10, -1), (10, True)],
+)
+def test_fetch_payment_refunds_rejects_invalid_pagination(
+    monkeypatch, count, skip
+):
+    gateway = RazorpayGateway.__new__(RazorpayGateway)
+    calls = []
+    monkeypatch.setattr(
+        gateway, "_request",
+        lambda *args: calls.append(args),
+    )
+
+    with pytest.raises(ValueError):
+        gateway.fetch_payment_refunds(
+            "pay_123", count=count, skip=skip
+        )
+
+    assert calls == []
+
+
+def test_fetch_payment_refunds_rejects_invalid_collection(monkeypatch):
+    gateway = RazorpayGateway.__new__(RazorpayGateway)
+    monkeypatch.setattr(
+        gateway, "_request",
+        lambda *args: {"items": "not-a-list"},
+    )
+
+    with pytest.raises(RazorpayVerificationError):
+        gateway.fetch_payment_refunds("pay_123")
