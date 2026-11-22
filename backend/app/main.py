@@ -7,18 +7,21 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from .config import APP_ENV, GOOGLE_CLIENT_ID, PROJECT_ROOT
+from .config import (
+    APP_ENV, GOOGLE_CLIENT_ID, PROJECT_ROOT,
+    validate_runtime_configuration,
+)
 from .config import os
 from .buyer import authenticated_account, find_profile, router as buyer_router
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from .database import get_db
 from .auth_dependencies import resolve_session_account
@@ -42,8 +45,7 @@ app.include_router(payments_router)
 app.include_router(staff_site_visits_router)
 
 SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
-if not SESSION_SECRET:
-    raise RuntimeError("SESSION_SECRET is missing from the project .env file.")
+validate_runtime_configuration(SESSION_SECRET, APP_ENV)
 
 if APP_ENV != "development" and not GOOGLE_CLIENT_ID:
     raise RuntimeError("GOOGLE_CLIENT_ID must be configured outside development.")
@@ -149,6 +151,25 @@ def authenticated_staff_account(
     request.session["user"] = user
 
     return account
+
+
+@app.get("/health/live", include_in_schema=False)
+def liveness():
+    """Process-level health check; deliberately does not depend on the database."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready", include_in_schema=False)
+def readiness(db: Session = Depends(get_db)):
+    """Report readiness only when the configured database accepts a query."""
+    try:
+        db.execute(select(1))
+    except SQLAlchemyError:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready"},
+        )
+    return {"status": "ready"}
 
 
 @app.get("/")
