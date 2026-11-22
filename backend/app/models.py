@@ -1705,3 +1705,123 @@ class PaymentRefund(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+class CommissionRule(Base):
+    """Effective-dated commission rate. Rates are stored in basis points."""
+
+    __tablename__ = "commission_rules"
+
+    __table_args__ = (
+        CheckConstraint(
+            "rate_bps >= 0 AND rate_bps <= 10000",
+            name="ck_commission_rules_rate_bps",
+        ),
+        CheckConstraint(
+            "ends_at IS NULL OR ends_at > starts_at",
+            name="ck_commission_rules_effective_window",
+        ),
+        Index(
+            "ix_commission_rules_effective",
+            "is_active",
+            "starts_at",
+            "ends_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    rate_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
+    starts_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="1"
+    )
+    created_by_account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class CommissionLedgerEntry(Base):
+    """Append-only commission accrual/reversal with immutable rate snapshots."""
+
+    __tablename__ = "commission_ledger_entries"
+
+    __table_args__ = (
+        CheckConstraint(
+            "entry_type IN ('accrual', 'reversal')",
+            name="ck_commission_ledger_entry_type",
+        ),
+        CheckConstraint(
+            "amount > 0 AND basis_amount > 0",
+            name="ck_commission_ledger_positive_amounts",
+        ),
+        CheckConstraint(
+            "rate_bps >= 0 AND rate_bps <= 10000",
+            name="ck_commission_ledger_rate_bps",
+        ),
+        CheckConstraint(
+            "approval_status IN ('pending', 'approved', 'rejected')",
+            name="ck_commission_ledger_approval_status",
+        ),
+        UniqueConstraint(
+            "source_payment_ledger_entry_id",
+            name="uq_commission_ledger_source_payment_entry",
+        ),
+        Index(
+            "ix_commission_ledger_cp_created",
+            "channel_partner_account_id",
+            "created_at",
+        ),
+        Index(
+            "ix_commission_ledger_approval_created",
+            "approval_status",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel_partner_account_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    transaction_id: Mapped[int] = mapped_column(
+        ForeignKey("real_estate_transactions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    payment_attempt_id: Mapped[int] = mapped_column(
+        ForeignKey("payment_attempts.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_payment_ledger_entry_id: Mapped[int] = mapped_column(
+        ForeignKey("payment_ledger_entries.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    original_accrual_id: Mapped[int | None] = mapped_column(
+        ForeignKey("commission_ledger_entries.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    commission_rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("commission_rules.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    basis_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    rate_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    approval_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", server_default="pending"
+    )
+    reviewed_by_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )

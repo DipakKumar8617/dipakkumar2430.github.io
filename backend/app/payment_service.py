@@ -282,6 +282,11 @@ def record_verified_capture(
             provider_payment_id, "Provider payment ID", 128
         )
     db.flush()
+
+    # Commission accrual shares this transaction with the verified capture.
+    from .commission_service import accrue_verified_capture
+    accrue_verified_capture(db, entry.id)
+
     return entry
 
 
@@ -358,6 +363,11 @@ def record_verified_refund(
         "refunded" if amount == remaining else "partially_refunded"
     )
     db.flush()
+
+    # Commission reversal shares this transaction with the verified refund.
+    from .commission_service import reverse_verified_refund
+    reverse_verified_refund(db, entry.id)
+
     return entry
 
 

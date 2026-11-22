@@ -4,7 +4,12 @@ import pytest
 from sqlalchemy import create_engine, select, func
 from sqlalchemy.orm import Session
 
-from backend.app.models import Base, PaymentAttempt, PaymentLedgerEntry
+from backend.app.models import (
+    Base,
+    CommissionLedgerEntry,
+    PaymentAttempt,
+    PaymentLedgerEntry,
+)
 from backend.app.payment_service import record_verified_refund
 
 
@@ -16,6 +21,7 @@ def db():
         tables=[
             PaymentAttempt.__table__,
             PaymentLedgerEntry.__table__,
+            CommissionLedgerEntry.__table__,
         ],
     )
 
@@ -132,3 +138,78 @@ def test_exact_remaining_balance_can_be_refunded(db):
         )
     )
     assert total_refunds == Decimal("100.00")
+from decimal import Decimal
+
+from sqlalchemy import select
+
+from backend.app.models import CommissionLedgerEntry, PaymentLedgerEntry
+
+
+def _seed_commission_accrual(session, payment):
+    capture = session.scalar(
+        select(PaymentLedgerEntry).where(
+            PaymentLedgerEntry.payment_attempt_id == payment.id,
+            PaymentLedgerEntry.entry_type == "capture",
+        )
+    )
+    assert capture is not None
+
+    accrual = CommissionLedgerEntry(
+        channel_partner_account_id=99,
+        transaction_id=10,
+        payment_attempt_id=payment.id,
+        source_payment_ledger_entry_id=capture.id,
+        entry_type="accrual",
+        basis_amount=Decimal("100.00"),
+        amount=Decimal("10.00"),
+        rate_bps=1000,
+        currency="INR",
+        approval_status="approved",
+    )
+    session.add(accrual)
+    session.flush()
+    return accrual
+
+
+def test_partial_refund_reverses_commission_proportionally(db):
+    session, payment = db
+    accrual = _seed_commission_accrual(session, payment)
+
+    first_refund = refund(session, payment, "commission_rfnd_1", "25.00")
+    session.flush()
+
+    reversal = session.scalar(
+        select(CommissionLedgerEntry).where(
+            CommissionLedgerEntry.source_payment_ledger_entry_id
+            == first_refund.id
+        )
+    )
+
+    assert reversal is not None
+    assert reversal.entry_type == "reversal"
+    assert reversal.original_accrual_id == accrual.id
+    assert reversal.amount == Decimal("2.50")
+    assert reversal.approval_status == "approved"
+
+
+def test_multiple_partial_refunds_reverse_only_cumulative_proportion(db):
+    session, payment = db
+    accrual = _seed_commission_accrual(session, payment)
+
+    first = refund(session, payment, "commission_rfnd_2", "25.00")
+    second = refund(session, payment, "commission_rfnd_3", "25.00")
+    session.flush()
+
+    reversals = session.scalars(
+        select(CommissionLedgerEntry).where(
+            CommissionLedgerEntry.original_accrual_id == accrual.id,
+            CommissionLedgerEntry.entry_type == "reversal",
+        )
+    ).all()
+
+    assert len(reversals) == 2
+    assert sum((row.amount for row in reversals), Decimal("0.00")) == Decimal("5.00")
+    assert {row.source_payment_ledger_entry_id for row in reversals} == {
+        first.id,
+        second.id,
+    }

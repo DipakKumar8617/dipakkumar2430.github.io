@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
@@ -16,6 +16,8 @@ from .models import (
     AuthIdentity,
     DeveloperOrganization,
     DeveloperOrganizationAuditLog,
+    CommissionLedgerEntry,
+    CommissionRule,
     PropertyChannelPartnerAssignment,
     PropertyListing,
     StaffAuditLog,
@@ -23,6 +25,7 @@ from .models import (
     UserAccount,
 )
 from .security import hash_password
+from .commission_service import review_commission
 
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -886,3 +889,249 @@ def revoke_property_channel_partner(
     except Exception:
         db.rollback()
         raise
+
+# ---------------------------------------------------------------------------
+# CP commission administration
+# ---------------------------------------------------------------------------
+
+class CommissionRuleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rate_bps: int = Field(ge=0, le=10000)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
+    starts_at: datetime
+    ends_at: datetime | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        value = value.strip().upper()
+        if not re.fullmatch(r"[A-Z]{3}", value):
+            raise ValueError("Currency must be a three-letter ISO code.")
+        return value
+
+    @field_validator("starts_at", "ends_at")
+    @classmethod
+    def normalize_datetime(cls, value):
+        if value is not None and value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
+
+class CommissionReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approved", "rejected"]
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+
+def _commission_rule_data(rule: CommissionRule) -> dict:
+    return {
+        "id": rule.id,
+        "rate_bps": rule.rate_bps,
+        "currency": rule.currency,
+        "starts_at": rule.starts_at,
+        "ends_at": rule.ends_at,
+        "is_active": rule.is_active,
+        "created_by_account_id": rule.created_by_account_id,
+        "created_at": rule.created_at,
+    }
+
+
+def _commission_entry_data(entry: CommissionLedgerEntry) -> dict:
+    return {
+        "id": entry.id,
+        "channel_partner_account_id": entry.channel_partner_account_id,
+        "transaction_id": entry.transaction_id,
+        "payment_attempt_id": entry.payment_attempt_id,
+        "source_payment_ledger_entry_id": entry.source_payment_ledger_entry_id,
+        "original_accrual_id": entry.original_accrual_id,
+        "commission_rule_id": entry.commission_rule_id,
+        "entry_type": entry.entry_type,
+        "basis_amount": str(entry.basis_amount),
+        "amount": str(entry.amount),
+        "rate_bps": entry.rate_bps,
+        "currency": entry.currency,
+        "approval_status": entry.approval_status,
+        "reviewed_by_account_id": entry.reviewed_by_account_id,
+        "reviewed_at": entry.reviewed_at,
+        "review_note": entry.review_note,
+        "created_at": entry.created_at,
+    }
+
+
+@admin_router.get("/commission-rules")
+def list_commission_rules(
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rules = db.scalars(
+        select(CommissionRule).order_by(
+            CommissionRule.starts_at.desc(),
+            CommissionRule.id.desc(),
+        )
+    ).all()
+    return {"items": [_commission_rule_data(rule) for rule in rules]}
+
+
+@admin_router.post("/commission-rules", status_code=201)
+def create_commission_rule(
+    payload: CommissionRuleCreate,
+    request: Request,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if payload.ends_at is not None and payload.ends_at <= payload.starts_at:
+        raise HTTPException(
+            status_code=422,
+            detail="ends_at must be later than starts_at.",
+        )
+
+    # Active rules for a currency may not have overlapping effective windows.
+    upper_bound = payload.ends_at or datetime.max
+    overlap = db.scalar(
+        select(CommissionRule.id)
+        .where(
+            CommissionRule.is_active.is_(True),
+            CommissionRule.currency == payload.currency,
+            CommissionRule.starts_at < upper_bound,
+            or_(
+                CommissionRule.ends_at.is_(None),
+                CommissionRule.ends_at > payload.starts_at,
+            ),
+        )
+        .limit(1)
+    )
+    if overlap is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="An active commission rule already overlaps this effective window.",
+        )
+
+    rule = CommissionRule(
+        rate_bps=payload.rate_bps,
+        currency=payload.currency,
+        starts_at=payload.starts_at,
+        ends_at=payload.ends_at,
+        is_active=True,
+        created_by_account_id=admin.id,
+    )
+    db.add(rule)
+    db.flush()
+
+    db.add(
+        StaffAuditLog(
+            actor_account_id=admin.id,
+            target_account_id=None,
+            action="commission_rule_created",
+            details={
+                "commission_rule_id": rule.id,
+                "rate_bps": rule.rate_bps,
+                "currency": rule.currency,
+                "starts_at": rule.starts_at.isoformat(),
+                "ends_at": (
+                    rule.ends_at.isoformat() if rule.ends_at else None
+                ),
+            },
+        )
+    )
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(rule)
+    return _commission_rule_data(rule)
+
+
+@admin_router.get("/commissions")
+def list_commissions(
+    approval_status: str | None = None,
+    channel_partner_account_id: int | None = None,
+    limit: int = 100,
+    _admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if approval_status is not None and approval_status not in {
+        "pending", "approved", "rejected"
+    }:
+        raise HTTPException(status_code=422, detail="Invalid approval_status.")
+    if channel_partner_account_id is not None and channel_partner_account_id <= 0:
+        raise HTTPException(status_code=422, detail="Invalid channel partner ID.")
+
+    limit = max(1, min(limit, 500))
+    query = select(CommissionLedgerEntry)
+    if approval_status is not None:
+        query = query.where(
+            CommissionLedgerEntry.approval_status == approval_status
+        )
+    if channel_partner_account_id is not None:
+        query = query.where(
+            CommissionLedgerEntry.channel_partner_account_id
+            == channel_partner_account_id
+        )
+
+    entries = db.scalars(
+        query.order_by(
+            CommissionLedgerEntry.created_at.desc(),
+            CommissionLedgerEntry.id.desc(),
+        ).limit(limit)
+    ).all()
+    return {"items": [_commission_entry_data(entry) for entry in entries]}
+
+
+@admin_router.post("/commissions/{entry_id}/review")
+def review_commission_entry(
+    entry_id: int,
+    payload: CommissionReviewRequest,
+    admin: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        entry = review_commission(
+            db,
+            entry_id=entry_id,
+            admin_account_id=admin.id,
+            decision=payload.decision,
+            note=payload.note,
+        )
+    except LookupError as exc:
+        db.rollback()
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    db.add(
+        StaffAuditLog(
+            actor_account_id=admin.id,
+            target_account_id=entry.channel_partner_account_id,
+            action=f"commission_{payload.decision}",
+            details={
+                "commission_entry_id": entry.id,
+                "entry_type": entry.entry_type,
+                "amount": str(entry.amount),
+                "currency": entry.currency,
+                "note": payload.note,
+            },
+        )
+    )
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(entry)
+    return _commission_entry_data(entry)
