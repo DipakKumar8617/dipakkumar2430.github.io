@@ -1579,6 +1579,10 @@ class PaymentReconciliationBatch(Base):
 
     __tablename__ = "payment_reconciliation_batches"
     __table_args__ = (
+        UniqueConstraint(
+            "provider", "idempotency_key",
+            name="uq_payment_reconciliation_provider_idempotency",
+        ),
         CheckConstraint(
             "status IN ('running', 'completed', 'failed')",
             name="ck_payment_reconciliation_batch_status",
@@ -1588,6 +1592,8 @@ class PaymentReconciliationBatch(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    statement_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     period_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     period_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     status: Mapped[str] = mapped_column(

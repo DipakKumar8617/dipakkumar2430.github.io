@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
@@ -41,11 +41,15 @@ def get_refundable_balance(db: Session, payment: PaymentAttempt) -> Decimal:
         (entry.amount for entry in entries if entry.entry_type == "capture"),
         Decimal("0.00"),
     )
-    refunded = sum(
-        (entry.amount for entry in entries if entry.entry_type == "refund"),
+    deductions = sum(
+        (
+            entry.amount
+            for entry in entries
+            if entry.entry_type in {"refund", "reversal", "chargeback"}
+        ),
         Decimal("0.00"),
     )
-    return captured - refunded
+    return captured - deductions
 
 
 def create_refund_request(

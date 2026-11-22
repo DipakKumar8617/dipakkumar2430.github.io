@@ -3,13 +3,14 @@
 The browser never determines payment success. Checkout verification and
 webhook processing both verify payment state directly with Razorpay.
 """
+from datetime import datetime
 import hashlib
 import json
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -903,3 +904,141 @@ def recover_captured_booking(
                 "investigate the inventory hold and transaction state."
             ),
         ) from exc
+
+
+class ReconciliationStatementLine(BaseModel):
+    provider_transaction_id: str = Field(min_length=1, max_length=128)
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    currency: str = Field(min_length=3, max_length=3)
+
+
+class ReconciliationImportPayload(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    statement_lines: list[ReconciliationStatementLine] = Field(max_length=10000)
+
+
+def _require_payment_admin(request, db):
+    account = resolve_session_account(request, db)
+    if str(account.role or "").strip().casefold() != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access is required.")
+    return account
+
+
+@router.post("/payments/reconciliation", status_code=201)
+def import_payment_reconciliation(
+    payload: ReconciliationImportPayload,
+    request: Request,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key", min_length=1, max_length=128
+    ),
+    db: Session = Depends(get_db),
+):
+    """Import a provider statement and persist its reconciliation results."""
+    _require_payment_admin(request, db)
+    try:
+        batch = reconcile_provider_statement(
+            db,
+            provider="razorpay",
+            period_start=payload.period_start,
+            period_end=payload.period_end,
+            statement_lines=[
+                line.model_dump() for line in payload.statement_lines
+            ],
+            idempotency_key=idempotency_key,
+        )
+        db.commit()
+        db.refresh(batch)
+        return {
+            "batch_id": batch.id,
+            "provider": batch.provider,
+            "status": batch.status,
+            "period_start": batch.period_start,
+            "period_end": batch.period_end,
+            "statement_hash": batch.statement_hash,
+            "idempotency_key": batch.idempotency_key,
+        }
+    except (PermissionError, LookupError, ValueError) as exc:
+        db.rollback()
+        _service_error(exc)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A reconciliation import with this idempotency key is already being processed.",
+        ) from exc
+
+
+@router.get("/payments/reconciliation/{batch_id}")
+def get_payment_reconciliation(
+    batch_id: int,
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """Return admin-only reconciliation totals and a page of exception details."""
+    _require_payment_admin(request, db)
+    batch = db.scalar(
+        select(PaymentReconciliationBatch).where(
+            PaymentReconciliationBatch.id == batch_id
+        )
+    )
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Reconciliation batch not found.")
+
+    totals = db.execute(
+        select(
+            PaymentReconciliationItem.outcome,
+            func.count(PaymentReconciliationItem.id),
+        )
+        .where(PaymentReconciliationItem.batch_id == batch_id)
+        .group_by(PaymentReconciliationItem.outcome)
+    ).all()
+
+    total_items = db.scalar(
+        select(func.count(PaymentReconciliationItem.id)).where(
+            PaymentReconciliationItem.batch_id == batch_id
+        )
+    ) or 0
+
+    items = db.scalars(
+        select(PaymentReconciliationItem)
+        .where(PaymentReconciliationItem.batch_id == batch_id)
+        .order_by(PaymentReconciliationItem.id)
+        .limit(limit)
+        .offset(offset)
+    ).all()
+
+    return {
+        "batch": {
+            "id": batch.id,
+            "provider": batch.provider,
+            "status": batch.status,
+            "period_start": batch.period_start,
+            "period_end": batch.period_end,
+            "statement_hash": batch.statement_hash,
+            "idempotency_key": batch.idempotency_key,
+        },
+        "total_items": total_items,
+        "outcomes": {outcome: count for outcome, count in totals},
+        "limit": limit,
+        "offset": offset,
+        "items": [
+            {
+                "id": item.id,
+                "payment_attempt_id": item.payment_attempt_id,
+                "provider_transaction_id": item.provider_transaction_id,
+                "outcome": item.outcome,
+                "expected_amount": (
+                    str(item.expected_amount) if item.expected_amount is not None else None
+                ),
+                "actual_amount": (
+                    str(item.actual_amount) if item.actual_amount is not None else None
+                ),
+                "currency": item.currency,
+                "details": item.details,
+            }
+            for item in items
+        ],
+    }

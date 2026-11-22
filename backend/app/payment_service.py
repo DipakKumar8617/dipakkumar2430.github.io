@@ -1,9 +1,13 @@
 """Provider-neutral payment, ledger, webhook, and reconciliation services.
+import hashlib
+import json
 
 All functions flush but never commit. The API or job caller owns the
 transaction boundary. Only trusted provider adapters should call functions
 that record verified financial outcomes.
 """
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -276,12 +280,17 @@ def record_verified_refund(
         (entry.amount for entry in entries if entry.entry_type == "capture"),
         Decimal("0.00"),
     )
-    refunded = sum(
-        (entry.amount for entry in entries if entry.entry_type == "refund"),
+    deductions = sum(
+        (
+            entry.amount
+            for entry in entries
+            if entry.entry_type in {"refund", "reversal", "chargeback"}
+        ),
         Decimal("0.00"),
     )
+    remaining = captured - deductions
 
-    if amount > captured - refunded:
+    if amount > remaining:
         raise ValueError("Refund exceeds the remaining captured balance.")
 
     entry = PaymentLedgerEntry(
@@ -295,7 +304,7 @@ def record_verified_refund(
     db.add(entry)
 
     payment.status = (
-        "refunded" if amount == captured - refunded else "partially_refunded"
+        "refunded" if amount == remaining else "partially_refunded"
     )
     db.flush()
     return entry
@@ -436,6 +445,91 @@ def mark_webhook_processed(
     return event
 
 
+
+
+def record_verified_payment_adjustment(
+    db: Session,
+    payment_attempt_id: int,
+    *,
+    provider_transaction_id: str,
+    entry_type: str,
+    amount,
+    currency: str,
+):
+    """Append a provider-verified reversal or chargeback.
+
+    Adjustments reduce the remaining captured exposure. They never rewrite
+    prior ledger entries or automatically trigger another financial action.
+    """
+    payment = _locked_payment(db, payment_attempt_id)
+    transaction_id = _required_text(
+        provider_transaction_id, "Provider transaction ID", 128
+    )
+    entry_type = str(entry_type or "").strip().lower()
+    if entry_type not in {"reversal", "chargeback"}:
+        raise ValueError("Adjustment type must be reversal or chargeback.")
+
+    amount = _money(amount)
+    currency = _currency(currency)
+
+    duplicate = db.execute(
+        select(PaymentLedgerEntry).where(
+            PaymentLedgerEntry.provider == payment.provider,
+            PaymentLedgerEntry.provider_transaction_id == transaction_id,
+        )
+    ).scalar_one_or_none()
+
+    if duplicate is not None:
+        if (
+            duplicate.payment_attempt_id != payment.id
+            or duplicate.entry_type != entry_type
+            or duplicate.amount != amount
+            or duplicate.currency != currency
+        ):
+            raise ValueError(
+                "Provider transaction ID conflicts with an existing ledger entry."
+            )
+        return duplicate
+
+    if payment.status not in {"captured", "partially_refunded", "refunded"}:
+        raise ValueError("Only captured payments can receive financial adjustments.")
+    if currency != payment.currency:
+        raise ValueError("Adjustment currency does not match the payment.")
+
+    entries = db.execute(
+        select(PaymentLedgerEntry).where(
+            PaymentLedgerEntry.payment_attempt_id == payment.id
+        )
+    ).scalars().all()
+
+    captured = sum(
+        (entry.amount for entry in entries if entry.entry_type == "capture"),
+        Decimal("0.00"),
+    )
+    deductions = sum(
+        (
+            entry.amount
+            for entry in entries
+            if entry.entry_type in {"refund", "reversal", "chargeback"}
+        ),
+        Decimal("0.00"),
+    )
+    if amount > captured - deductions:
+        raise ValueError("Adjustment exceeds the remaining captured balance.")
+
+    entry = PaymentLedgerEntry(
+        payment_attempt_id=payment.id,
+        provider=payment.provider,
+        provider_transaction_id=transaction_id,
+        entry_type=entry_type,
+        amount=amount,
+        currency=currency,
+    )
+    db.add(entry)
+    db.flush()
+    return entry
+
+
 def reconcile_provider_statement(
     db: Session,
     *,
@@ -443,14 +537,20 @@ def reconcile_provider_statement(
     period_start: datetime,
     period_end: datetime,
     statement_lines: list[dict],
+    idempotency_key: str,
 ):
-    """Compare provider statement transactions against the immutable ledger."""
+    """Idempotently compare a complete provider statement with the ledger."""
     provider = _provider(provider)
+    key = _required_text(idempotency_key, "Reconciliation idempotency key", 128)
     if period_end <= period_start:
         raise ValueError("Reconciliation period end must be after its start.")
+    if not isinstance(statement_lines, list) or len(statement_lines) > 10000:
+        raise ValueError("Statement must contain at most 10,000 transaction lines.")
 
     normalized = {}
     for line in statement_lines:
+        if not isinstance(line, dict):
+            raise ValueError("Every statement line must be an object.")
         transaction_id = _required_text(
             line.get("provider_transaction_id"), "Statement transaction ID", 128
         )
@@ -461,8 +561,35 @@ def reconcile_provider_statement(
             "currency": _currency(line.get("currency")),
         }
 
+    canonical = [
+        {
+            "provider_transaction_id": transaction_id,
+            "amount": str(values["amount"]),
+            "currency": values["currency"],
+        }
+        for transaction_id, values in sorted(normalized.items())
+    ]
+    digest = hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    existing = db.scalar(
+        select(PaymentReconciliationBatch).where(
+            PaymentReconciliationBatch.provider == provider,
+            PaymentReconciliationBatch.idempotency_key == key,
+        )
+    )
+    if existing is not None:
+        if existing.statement_hash != digest:
+            raise ValueError(
+                "Reconciliation idempotency key was reused with different statement content."
+            )
+        return existing
+
     batch = PaymentReconciliationBatch(
         provider=provider,
+        idempotency_key=key,
+        statement_hash=digest,
         period_start=period_start,
         period_end=period_end,
         status="running",
