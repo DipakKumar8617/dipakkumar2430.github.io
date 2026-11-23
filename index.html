@@ -1,80 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8f7f3">
+  <meta name="description" content="Discover exceptional properties with RealIQ — a smarter, more considered real-estate experience.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RealIQ — Real Estate, Structured</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+  <title>RealIQ — Find a place worth coming home to</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/cinematic.css">
 </head>
-<body>
-
-<header>
-  <div class="nav">
-    <div class="logo"><span class="mark">π</span>RealIQ</div>
-    <nav class="links">
-      <a href="#listings">Buy</a>
-      <a href="#roles">Developers</a>
-      <a href="#roles">Channel Partners</a>
-      <a href="#stats">New Launches</a>
+<body class="realiq-home">
+<header class="rq-nav-wrap">
+  <div class="rq-nav">
+    <a class="rq-brand" href="/" aria-label="RealIQ home"><span class="rq-brand-mark">R</span><span>real<span>IQ</span></span></a>
+    <nav class="rq-nav-links" aria-label="Main navigation">
+      <a href="#discover">Discover</a><a href="#listings">Featured homes</a><a href="#roles">Our platform</a>
     </nav>
-    <div class="nav-cta">
-      <a class="btn btn-ghost" href="#login">Log in</a>
-      <a class="btn btn-brass" href="register.html">Register</a>
-      <button class="btn btn-ghost" id="logoutTopBtn" type="button" style="display:none;">Logout</button>
-    </div>
+    <div class="rq-nav-actions"><a class="rq-login-link" href="/login.html">Log in</a><a class="rq-register-link" href="/register.html">Get started <span>↗</span></a><button class="rq-logout-link" type="button" hidden>Logout</button></div>
+    <button class="rq-menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
   </div>
 </header>
-
-<section class="hero" style="padding-top:80px;">
-  <div class="hero-grid">
-    <div>
-      <div class="eyebrow">Centralized real-estate platform</div>
-      <h1>Property search, <em>read structurally.</em></h1>
-      <p class="lede">One system for buyers, channel partners, developers — live inventory, natural-language search, and role-based control from a single source of truth.</p>
-
-      <div class="search-card">
-        <div class="search-tabs">
-          <div class="search-tab active">AI Search</div>
-          <div class="search-tab">Traditional Filters</div>
-        </div>
-        <form id="searchForm" class="search-row" autocomplete="off">
-          <input id="searchInput" type="text" placeholder="" autocomplete="off" />
-          <button type="submit" id="searchBtn">Search</button>
-        </form>
-        <div class="parse-strip" id="parseStrip"></div>
-      </div>
-
-      <div class="hero-stats">
-        <div><div class="num">18,400+</div><div class="lbl">Live units tracked</div></div>
-        <div><div class="num">640</div><div class="lbl">Verified developers</div></div>
-        <div><div class="num">92%</div><div class="lbl">Query match accuracy</div></div>
-      </div>
+<main>
+  <section class="rq-hero" id="discover">
+    <div class="rq-hero-image" aria-hidden="true"></div>
+    <div class="rq-hero-shade"></div>
+    <div class="rq-hero-content">
+      <div class="rq-kicker rq-reveal"><span></span> A more considered way to find home</div>
+      <h1 class="rq-reveal">Find a place<br>that feels like <em>you.</em></h1>
+      <p class="rq-hero-copy rq-reveal">Exceptional spaces. Clear decisions. Every detail, thoughtfully brought together.</p>
+      <a class="rq-hero-cta rq-reveal" href="#property-search">Explore properties <span>↗</span></a>
     </div>
+    <div class="rq-hero-caption"><span>01 / 04</span><span>Spaces that inspire a different perspective</span></div>
+    <div class="rq-scroll-cue"><span></span> SCROLL TO DISCOVER</div>
+  </section>
 
-    <div class="hero-visual">
-      <img src="images/hero-building.jpg" alt="Modern apartment tower exterior" />
-      <div class="hero-float">
-        <div class="lbl">Median ticket size</div>
-        <div class="val">₹1.86 Cr</div>
-        <div class="sub">▲ RERA-verified inventory</div>
-      </div>
-      <div class="hero-tag">
-        <div>
-          <div class="t1">Meridian Heights, New Town</div>
-          <div class="t2">3 BHK · 1,420 sq.ft · Tower B</div>
-        </div>
-        <div class="badge-verified">RERA VERIFIED</div>
-      </div>
+  <section class="rq-journey" id="rq-cinematic-journey" aria-label="A journey into your next home">
+    <div class="rq-journey-intro">
+      <span class="rq-eyebrow">A DIFFERENT WAY TO DISCOVER</span>
+      <h2>Not just a property.<br><em>A feeling you recognise.</em></h2>
+      <p>Move through the spaces. Imagine the everyday. Then find the home that feels right.</p>
+      <span class="rq-journey-hint">SCROLL TO MOVE THROUGH THE HOME <i>↓</i></span>
     </div>
-  </div>
-  <div class="hero-bottom-space"></div>
-</section>
+    <div class="rq-journey-stage">
+      <div class="rq-journey-image rq-journey-image--exterior" role="img" aria-label="Contemporary luxury residence"></div>
+      <div class="rq-journey-image rq-journey-image--lobby" role="img" aria-label="Warm residential lobby"></div>
+      <div class="rq-journey-image rq-journey-image--lift" role="img" aria-label="Minimalist residential interior"></div>
+      <div class="rq-journey-image rq-journey-image--home" role="img" aria-label="Sunlit luxury apartment"></div>
+      <div class="rq-journey-vignette"></div>
+      <div class="rq-journey-topline"><span>THE REALIQ EXPERIENCE</span><span class="rq-scene-count">01 <i>/</i> 04</span></div>
+      <div class="rq-journey-copy">
+        <span class="rq-journey-kicker">01 — THE ARRIVAL</span>
+        <h3>Come home<br>to something<br><em>extraordinary.</em></h3>
+        <p>Architecture that welcomes you before you even step inside.</p>
+      </div>
+      <div class="rq-journey-progress"><span></span></div>
+      <div class="rq-journey-bottom"><span>KOLKATA · A NEW PERSPECTIVE</span><span>SCROLL TO EXPLORE ↓</span></div>
+    </div>
+    <div class="rq-journey-outro"><span class="rq-eyebrow">THE SPACE IS YOURS</span><h2>Now, let's find <em>your place.</em></h2></div>
+  </section>
 
-<section id="roles">
+  <section class="rq-search-zone" id="property-search">
+    <div class="rq-search-intro"><span class="rq-eyebrow">THE RIGHT PLACE STARTS HERE</span><h2>What does home look like to you?</h2></div>
+    <div class="rq-search-card">
+      <div class="rq-search-label"><span class="rq-search-icon">⌕</span><label for="searchInput">Describe your ideal property</label></div>
+      <form id="searchForm" class="rq-search-row" autocomplete="off"><input id="searchInput" type="text" placeholder="3 BHK in New Town, under ₹2 Cr..." autocomplete="off"><button type="submit" id="searchBtn">Explore <span>→</span></button></form>
+      <div class="parse-strip" id="parseStrip" aria-live="polite"></div>
+      <div class="rq-search-foot"><span>✦ Powered by intelligent property search</span><span>Find your fit, not just a listing.</span></div>
+    </div>
+  </section>
+  <!-- Existing RealIQ role and inventory content is retained. -->
+  <div class="rq-content-wrap">
+    <section id="roles">
   <div class="wrap">
     <div class="section-head">
       <div class="eyebrow">One schema, three vantage points</div>
@@ -119,8 +119,7 @@
     </div>
   </div>
 </section>
-
-<section id="listings" style="background:var(--white); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+    <section id="listings" style="background:var(--white); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
   <div class="wrap">
     <div class="listings-head">
       <div class="section-head" style="margin-bottom:0;">
@@ -178,8 +177,8 @@
     </div>
   </div>
 </section>
-
-<section class="stats-band" id="stats">
+  </div>
+  <section class="stats-band" id="stats">
   <img class="bg-img" src="images/skyline-dusk.jpg" alt="City skyline at dusk" />
   <div class="wrap stats-inner">
     <h2>A single ledger, from first search to final registration.</h2>
@@ -191,58 +190,8 @@
     </div>
   </div>
 </section>
-
-<section class="login-section" id="login">
-  <div class="login-grid">
-    <div class="login-visual">
-      <img src="images/login-lounge.jpg" alt="Luxury modern interior lounge" />
-      <div class="overlay">
-        <blockquote>"Every enquiry, site visit, and booking — visible the moment it happens."</blockquote>
-        <div class="attribution">— Built for teams managing live inventory at scale</div>
-      </div>
-    </div>
-
-    <div class="login-form-wrap">
-      <div class="login-form">
-        <div class="eyebrow">Welcome back</div>
-        <h2>Log in to RealIQ</h2>
-        <p>Select your role — your dashboard adjusts automatically.</p>
-
-        <div class="role-switch" id="roleSwitch">
-          <button data-role="Channel Partner">CP</button>
-          <button data-role="Developer">Developer</button>
-          <button data-role="Admin">Admin</button>
-        </div>
-
-        <form id="loginForm" autocomplete="off">
-          <div class="field">
-            <label for="email">Email or phone</label>
-            <input id="email" type="text" placeholder="you@company.com" required autocomplete="off" name="login-email-manual" />
-          </div>
-          <div class="field">
-            <label for="pass">Password</label>
-            <input id="pass" type="password" placeholder="••••••••••" required autocomplete="new-password" name="login-password-manual" />
-          </div>
-          <div class="form-row-between">
-            <label><input type="checkbox" /> Keep me signed in</label>
-            <a href="forgot-password.html">Forgot password?</a>
-          </div>
-          <button class="submit-btn" type="submit" id="submitBtn">Continue</button>
-          <div class="form-msg" id="formMsg"></div>
-        </form>
-
-        <div class="divider">or continue with</div>
-        <div class="alt-login">
-          <div id="googleLoginBtn" role="button" tabindex="0"><button type="button">Continue with Google</button></div>
-          <button type="button" id="otpLoginBtn">OTP on Mobile</button>
-        </div>
-
-        <div class="signup-note">New to RealIQ? <a href="register.html">Create an account</a></div>
-      </div>
-    </div>
-  </div>
-</section>
-
+  <section class="rq-closing"><div class="rq-closing-inner"><span class="rq-eyebrow">YOUR NEXT CHAPTER</span><h2>Good spaces change<br><em>the way life feels.</em></h2><a href="/register.html" class="rq-closing-cta">Begin your search <span>↗</span></a></div></section>
+</main>
 <footer>
   <div class="wrap">
     <div class="footer-grid">
@@ -281,9 +230,8 @@
     </div>
   </div>
 </footer>
-
 <script>
-  /* ============================================================
+/* ============================================================
      AI SEARCH — fixed behavior:
      - While the box is EMPTY and NOT focused, it rotates example
        queries through the placeholder only (never touches value).
@@ -419,309 +367,10 @@
 
   startCycle();
 
-  async function checkSession() {
-    try {
-      const response = await fetch('/api/session');
-      if (!response.ok) return;
-      const data = await response.json();
-      if (!data.authenticated) return;
 
-      const logoutBtn = document.getElementById('logoutTopBtn');
-      const loginLink = document.querySelector('.nav-cta .btn-ghost');
-      const registerLink = document.querySelector('.nav-cta .btn-brass');
-
-      if (logoutBtn) {
-        logoutBtn.style.display = 'inline-block';
-        logoutBtn.addEventListener('click', async () => {
-          await fetch('/api/logout', { method: 'POST' });
-          window.location.href = '/index.html#login';
-        });
-      }
-
-      if (loginLink) loginLink.style.display = 'none';
-      if (registerLink) {
-        registerLink.textContent = 'Dashboard';
-        registerLink.setAttribute('href', '/dashboard');
-      }
-    } catch (error) {
-      console.error('Session check failed:', error);
-    }
-  }
-
-  const roleButtons = document.querySelectorAll('#roleSwitch button');
-  const submitBtn = document.getElementById('submitBtn');
-  roleButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      roleButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      submitBtn.textContent = 'Continue as ' + btn.dataset.role;
-    });
-  });
-
-  const initialRole = 'Developer';
-
-  roleButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.role === initialRole);
-  });
-  submitBtn.textContent = 'Continue as ' + initialRole;
-
-  const form = document.getElementById('loginForm');
-  const msg = document.getElementById('formMsg');
-  const loginEmailInput = document.getElementById('email');
-  const loginPasswordInput = document.getElementById('pass');
-
-  // Property-led buyer sign-in: keep buyer access separate from staff roles.
-  const loginParams = new URLSearchParams(window.location.search);
-  const buyerLoginMode = loginParams.get('next') === '/buyer';
-
-  if (buyerLoginMode) {
-    const loginShell = document.querySelector('.login-form');
-    const eyebrow = loginShell?.querySelector('.eyebrow');
-    const heading = loginShell?.querySelector('h2');
-    const intro = loginShell?.querySelector('p');
-    const roleSwitch = document.getElementById('roleSwitch');
-    const signupNote = loginShell?.querySelector('.signup-note');
-
-    if (eyebrow) eyebrow.textContent = 'BUYER ACCESS';
-    if (heading) heading.textContent = 'Continue as a buyer';
-    if (intro) {
-      intro.textContent =
-        'Sign in to continue with the property you selected. No booking is made at this stage.';
-    }
-
-    if (roleSwitch) roleSwitch.style.display = 'none';
-
-    // Buyer sign-in supports manual email/password authentication.
-    submitBtn.textContent = 'Sign in as Buyer';
-    loginEmailInput.type = 'email';
-    loginEmailInput.required = true;
-    loginEmailInput.placeholder = 'Email address';
-    loginPasswordInput.type = 'password';
-    loginPasswordInput.required = true;
-    loginPasswordInput.placeholder = 'Password';
-
-    const emailField = loginEmailInput.closest('.field');
-    const passwordField = loginPasswordInput.closest('.field');
-    if (emailField?.querySelector('label')) {
-      emailField.querySelector('label').textContent = 'Email address';
-    }
-    if (passwordField?.querySelector('label')) {
-      passwordField.querySelector('label').textContent = 'Password';
-    }
-
-    if (signupNote) {
-      const propertyId = loginParams.get('property_id');
-      const safePropertyId = /^[1-9]\d{0,9}$/.test(propertyId || '')
-        ? propertyId
-        : '';
-      const propertySuffix = safePropertyId
-        ? `&property_id=${safePropertyId}`
-        : '';
-      const buyerRegistrationUrl =
-        `/register.html?next=%2Fbuyer${propertySuffix}`;
-
-      signupNote.innerHTML =
-        `New buyer? <a href="${buyerRegistrationUrl}">Create an account</a>.`;
-    }
-  }
-
-  loginEmailInput.value = '';
-  loginPasswordInput.value = '';
-  loginEmailInput.setAttribute('autocomplete', buyerLoginMode ? 'email' : 'off');
-  loginPasswordInput.setAttribute(
-    'autocomplete',
-    buyerLoginMode ? 'current-password' : 'new-password'
-  );
-
-  if (buyerLoginMode && loginParams.get('registered') === '1') {
-    // The account was created, but the buyer must sign in separately.
-    msg.style.display = 'block';
-    msg.style.background = '#eef6f1';
-    msg.style.color = 'var(--emerald)';
-    msg.style.borderColor = '#cfe6da';
-    msg.textContent = 'Account created successfully. Please sign in with your email and password.';
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const identifier = loginEmailInput.value.trim();
-    const password = loginPasswordInput.value;
-    const roleButton = document.querySelector('#roleSwitch button.active');
-    const role = roleButton?.dataset.role || 'Developer';
-
-    const propertyValue = loginParams.get('property_id');
-    const safePropertyId = /^[1-9]\\d{0,9}$/.test(propertyValue || '')
-      ? Number(propertyValue)
-      : null;
-
-    const endpoint = buyerLoginMode
-      ? '/api/auth/password/login'
-      : '/api/login';
-
-    const requestBody = buyerLoginMode
-      ? {
-          identifier,
-          password,
-          ...(safePropertyId ? { property_id: safePropertyId } : {})
-        }
-      : { identifier, password, role };
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        loginEmailInput.value = '';
-        loginPasswordInput.value = '';
-        loginEmailInput.focus();
-
-        msg.style.display = 'block';
-        msg.style.background = '#fbeaea';
-        msg.style.color = '#a13636';
-        msg.style.borderColor = '#f0c9c9';
-        msg.textContent = '✕ ' + (data.message || 'Invalid credentials. Please try again.');
-        return;
-      }
-
-      msg.style.display = 'block';
-      msg.style.background = '#eef6f1';
-      msg.style.color = 'var(--emerald)';
-      msg.style.borderColor = '#cfe6da';
-      msg.textContent = `✓ Welcome back, ${data.user.fullName || data.user.email}. Redirecting to dashboard…`;
-
-      setTimeout(() => {
-        window.location.href = getPostLoginRedirect(data.redirect || '/dashboard');
-      }, 800);
-    } catch (error) {
-      loginEmailInput.value = '';
-      loginPasswordInput.value = '';
-      loginEmailInput.focus();
-
-      msg.style.display = 'block';
-      msg.style.background = '#fbeaea';
-      msg.style.color = '#a13636';
-      msg.style.borderColor = '#f0c9c9';
-      msg.textContent = '✕ Unable to reach the server. Please try again later.';
-    }
-  });
-
-  // Google Sign-In: Google verifies the account token on the backend.
-  const googleContainer = document.getElementById('googleLoginBtn');
-  const otpButton = document.getElementById('otpLoginBtn');
-
-  function getPostLoginRedirect(fallback = '/dashboard') {
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get('next');
-    const allowed = ['/buyer', '/buyer/onboarding', '/buyer/dashboard'];
-    if (!allowed.includes(requested)) return fallback;
-    if (requested !== '/buyer') return requested;
-    const propertyId = params.get('property_id');
-    return /^[1-9]\d{0,9}$/.test(propertyId || '')
-      ? `/buyer?property_id=${propertyId}`
-      : '/buyer';
-  }
-
-  function showAuthMessage(message, success = false) {
-    msg.style.display = 'block';
-    msg.style.background = success ? '#eef6f1' : '#fbeaea';
-    msg.style.color = success ? 'var(--emerald)' : '#a13636';
-    msg.style.borderColor = success ? '#cfe6da' : '#f0c9c9';
-    msg.textContent = message;
-  }
-
-  async function postAuthJson(url, body) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(body)
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.detail || data.message || 'Authentication failed.');
-    }
-    return data;
-  }
-
-  async function handleGoogleCredential(response) {
-    try {
-      showAuthMessage('Verifying your Google account...', true);
-      const googlePayload = {
-        credential: response.credential,
-        ...(buyerLoginMode ? { purpose: 'buyer' } : {})
-      };
-      const data = await postAuthJson('/api/auth/google', googlePayload);
-      showAuthMessage('Google sign-in successful. Redirecting...', true);
-      window.location.href = getPostLoginRedirect(data.redirect || '/dashboard');
-    } catch (error) {
-      showAuthMessage(error.message || 'Google sign-in failed.');
-    }
-  }
-
-  async function initializeGoogleSignIn() {
-    try {
-      const configResponse = await fetch('/api/auth/config');
-      if (!configResponse.ok) throw new Error('Could not load Google sign-in configuration.');
-
-      const config = await configResponse.json();
-      if (!config.google_client_id) {
-        googleContainer.textContent = 'Google Sign-In needs a configured Client ID.';
-        return;
-      }
-
-      const waitForGoogle = () => {
-        if (!window.google?.accounts?.id) {
-          setTimeout(waitForGoogle, 150);
-          return;
-        }
-
-        window.google.accounts.id.initialize({
-          client_id: config.google_client_id,
-          callback: handleGoogleCredential
-        });
-
-        googleContainer.replaceChildren();
-        window.google.accounts.id.renderButton(googleContainer, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'rectangular',
-          width: 240
-        });
-      };
-
-      waitForGoogle();
-    } catch (error) {
-      showAuthMessage(error.message || 'Unable to initialize Google sign-in.');
-    }
-  }
-
-  initializeGoogleSignIn();
-
-  // OTP login uses a dedicated verification page.
-  otpButton.addEventListener('click', () => {
-    const buyerDestination = getPostLoginRedirect(null);
-    if (!buyerDestination) {
-      window.location.href = '/otp-login.html';
-      return;
-    }
-    const destination = new URL(buyerDestination, window.location.origin);
-    const params = new URLSearchParams({next: destination.pathname});
-    const propertyId = destination.searchParams.get('property_id');
-    if (propertyId && /^[1-9]\d{0,9}$/.test(propertyId)) params.set('property_id', propertyId);
-    window.location.href = `/otp-login.html?${params.toString()}`;
-  });
-  checkSession();
 </script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+<script src="/cinematic.js" defer></script>
 </body>
 </html>

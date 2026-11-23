@@ -1,0 +1,52 @@
+
+/* RealIQ cinematic journey — additive, scoped styles */
+.rq-journey{background:#f3f1eb;color:#242722;position:relative;overflow:clip}
+.rq-journey-intro{max-width:1160px;margin:auto;padding:100px 7% 62px}
+.rq-journey-intro h2,.rq-journey-outro h2{font:500 clamp(38px,5vw,66px)/1.08 var(--rq-serif,Georgia,serif);letter-spacing:-.045em;margin:18px 0}
+.rq-journey-intro h2 em,.rq-journey-outro h2 em{color:#9b8058;font-weight:500}
+.rq-journey-intro p{max-width:440px;color:#74766e;font-size:14px;line-height:1.9}
+.rq-journey-hint{display:inline-flex;gap:20px;align-items:center;margin-top:30px;color:#8e7957;font-size:9px;letter-spacing:.17em;font-weight:700}
+.rq-journey-hint i{font-style:normal;font-size:18px}
+.rq-journey-stage{height:min(76vh,760px);min-height:590px;position:relative;overflow:hidden;background:#303832;color:white}
+.rq-journey-image{position:absolute;inset:-3%;background-size:cover;background-position:center;opacity:0;transform:scale(1.08);will-change:transform,opacity}
+.rq-journey-image--exterior{background-image:url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2200&q=88');opacity:1}
+.rq-journey-image--lobby{background-image:url('https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2200&q=88')}
+.rq-journey-image--lift{background-image:url('https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=2200&q=88')}
+.rq-journey-image--home{background-image:url('https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2200&q=88')}
+.rq-journey-vignette{position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,22,20,.72),rgba(15,22,20,.22) 62%,rgba(15,22,20,.08)),linear-gradient(0deg,rgba(13,18,16,.4),transparent 25%)}
+.rq-journey-topline,.rq-journey-bottom{position:absolute;left:6%;right:6%;display:flex;justify-content:space-between;z-index:3;font-size:9px;letter-spacing:.17em;color:rgba(255,255,255,.78)}
+.rq-journey-topline{top:32px}.rq-journey-bottom{bottom:28px}
+.rq-scene-count i{font-style:normal;color:#c5ad82;margin:0 5px}
+.rq-journey-copy{position:absolute;z-index:3;left:12%;top:50%;transform:translateY(-42%);max-width:570px}
+.rq-journey-kicker{color:#d9c49d;font-size:9px;font-weight:700;letter-spacing:.2em}
+.rq-journey-copy h3{font:500 clamp(48px,6.8vw,88px)/.99 var(--rq-serif,Georgia,serif);letter-spacing:-.055em;margin:23px 0}
+.rq-journey-copy h3 em{color:#d6bd91;font-weight:500}
+.rq-journey-copy p{max-width:330px;color:rgba(255,255,255,.8);font-size:13px;line-height:1.8}
+.rq-journey-progress{position:absolute;z-index:4;bottom:0;left:0;width:100%;height:3px;background:rgba(255,255,255,.2)}
+.rq-journey-progress span{display:block;width:25%;height:100%;background:#d2b98d;transform-origin:left}
+.rq-journey-outro{text-align:center;padding:82px 7% 92px}
+.rq-journey-outro h2{margin-bottom:0}
+.rq-journey .rq-eyebrow{color:#a78b5e}
+.realiq-register-page{background:#f3f1eb!important}
+.realiq-register-page>header{background:rgba(248,247,243,.96);border-bottom:1px solid rgba(45,48,40,.1)}
+.realiq-register-page .nav{max-width:1440px;padding-left:6.5%;padding-right:6.5%}
+.realiq-register-page .register-section{position:relative;isolation:isolate;min-height:calc(100vh - 80px);padding:72px 6% 90px;background:linear-gradient(90deg,rgba(20,27,25,.68),rgba(20,27,25,.16)),url('/images/login-lounge.jpg') center/cover fixed}
+.realiq-register-page .register-wrap{max-width:760px;margin:0 auto 0 7%;padding:42px 48px;background:rgba(250,249,246,.97);border:1px solid rgba(255,255,255,.7);box-shadow:0 30px 90px rgba(0,0,0,.2);border-radius:2px}
+.realiq-register-page .register-wrap h2{font:500 clamp(36px,4vw,48px)/1.08 var(--rq-serif,Georgia,serif);letter-spacing:-.04em;color:#292d28}
+.realiq-register-page .register-wrap .sub{color:#77796f;line-height:1.8}
+.realiq-register-page .role-select-card{background:#f2f0e9;border:1px solid #e2ded3;transition:border-color .2s,background .2s,transform .2s}
+.realiq-register-page .role-select-card.active{background:#e8e3d7;border-color:#aa9168;box-shadow:inset 0 -2px #aa9168}
+.realiq-register-page .field input,.realiq-register-page .field select,.realiq-register-page .field textarea{border:1px solid #dedbd2;background:#fff;transition:border-color .2s,box-shadow .2s}
+.realiq-register-page .field input:focus,.realiq-register-page .field select:focus,.realiq-register-page .field textarea:focus{outline:0;border-color:#9b8058;box-shadow:0 0 0 3px rgba(155,128,88,.13)}
+.realiq-auth-page .login-section{background:#f3f1eb}
+.realiq-auth-page .login-form-wrap{box-shadow:0 24px 70px rgba(40,42,36,.08);border:1px solid #e8e4da}
+.realiq-auth-page .login-visual img{width:100%;height:100%;object-fit:cover}
+@media(max-width:760px){
+ .rq-journey-intro{padding:68px 6% 42px}.rq-journey-stage{height:690px;min-height:0}
+ .rq-journey-copy{left:8%;right:8%;top:48%}.rq-journey-copy h3{font-size:clamp(48px,12vw,70px)}
+ .rq-journey-vignette{background:linear-gradient(90deg,rgba(15,22,20,.65),rgba(15,22,20,.18)),linear-gradient(0deg,rgba(13,18,16,.4),transparent 45%)}
+ .rq-journey-topline,.rq-journey-bottom{left:6%;right:6%;font-size:8px}
+ .realiq-register-page .register-section{padding:35px 5%;background-attachment:scroll}
+ .realiq-register-page .register-wrap{margin:0 auto;padding:30px 22px}
+}
+@media(prefers-reduced-motion:reduce){.rq-journey-image{transform:none!important;opacity:0}.rq-journey-image--exterior{opacity:1}}

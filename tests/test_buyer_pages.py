@@ -60,12 +60,14 @@ def test_buyer_cannot_open_staff_dashboard(client):
 def test_login_page_preserves_destination_without_buyer_role_option(client):
     response = client.get("/index.html?next=/buyer#login")
     assert response.status_code == 200
-    assert 'data-role="Buyer">Buyer</button>' not in response.text
-    assert "buyer-entry-note" not in response.text
-    assert "function getPostLoginRedirect" in response.text
-    assert "const initialRole = 'Developer';" in response.text
-    assert "params.toString()" in response.text
-    assert "property_id" in response.text
+    assert 'href="/login.html"' in response.text
+    assert 'id="loginForm"' not in response.text
+
+    login_response = client.get("/login.html?next=/buyer")
+    assert login_response.status_code == 200
+    assert "const initialRole = 'Developer';" in login_response.text
+    assert "property_id" in login_response.text
+    assert "function getPostLoginRedirect" in login_response.text
 
     otp_response = client.get("/otp-login.html?next=/buyer")
     assert otp_response.status_code == 200
