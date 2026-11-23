@@ -305,6 +305,11 @@ def buyer_enquiry_page():
     return FileResponse(PROJECT_ROOT / "buyer-enquiry.html")
 
 
+@app.get("/login.html", include_in_schema=False)
+async def realiq_login_page():
+    return FileResponse("login.html")
+
+
 app.mount("/images", StaticFiles(directory=PROJECT_ROOT / "images"), name="images")
 
 
@@ -792,3 +797,11 @@ def verify_otp(
 def logout(request: Request):
     request.session.clear()
     return {"success": True}
+
+@app.get("/cinematic.css", include_in_schema=False)
+def cinematic_stylesheet():
+    return FileResponse(PROJECT_ROOT / "cinematic.css", media_type="text/css")
+
+@app.get("/cinematic.js", include_in_schema=False)
+def cinematic_script():
+    return FileResponse(PROJECT_ROOT / "cinematic.js", media_type="application/javascript")

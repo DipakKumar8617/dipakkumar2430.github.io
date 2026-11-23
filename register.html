@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="/cinematic.css">
 </head>
-<body>
+<body class="realiq-auth-page realiq-register-page">
 
 <header>
   <div class="nav">
@@ -22,7 +23,7 @@
       <a href="index.html#stats">New Launches</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn btn-ghost" href="index.html#login">Log in</a>
+      <a class="btn btn-ghost" href="/login.html">Log in</a>
       <a class="btn btn-brass" href="register.html">Register</a>
     </div>
   </div>
@@ -155,7 +156,7 @@
         <div class="form-msg" id="registerMsg"></div>
       </form>
 
-      <div class="signup-note">Already have an account? <a href="index.html#login">Log in</a></div>
+      <div class="signup-note">Already have an account? <a href="/login.html">Log in</a></div>
     </div>
   </div>
 </section>
@@ -218,7 +219,7 @@
     ? selectedPropertyId
     : '';
   const buyerLoginUrl =
-    `/index.html?next=%2Fbuyer${safePropertyId ? `&property_id=${safePropertyId}` : ''}#login`;
+    `/login.html?next=%2Fbuyer${safePropertyId ? `&property_id=${safePropertyId}` : ''}`;
 
   if (buyerJourney) {
     const roleGrid = document.getElementById('roleSelectGrid');
@@ -241,7 +242,7 @@
     }
 
     // Keep navigation inside the Buyer flow.
-    document.querySelectorAll('.nav-cta a[href="index.html#login"]')
+    document.querySelectorAll('.nav-cta a[href="/login.html"]')
       .forEach((link) => { link.href = buyerLoginUrl; });
     document.querySelectorAll('.nav-cta a[href="register.html"]')
       .forEach((link) => {
