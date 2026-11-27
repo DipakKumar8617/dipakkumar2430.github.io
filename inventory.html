@@ -377,27 +377,653 @@
     }
   </style>
 
+
+  <style>
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--navy-950);
+      color: var(--white);
+      padding: 28px 18px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--white);
+      padding: 0 12px 28px;
+      text-decoration: none;
+      font-family: 'Fraunces', serif;
+      font-size: 25px;
+    }
+
+    .sidebar .mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background: var(--brass);
+      color: var(--navy-950);
+      font: 700 16px 'Inter', sans-serif;
+    }
+
+    .side-label {
+      font: 10px 'IBM Plex Mono', monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #b9c3cc;
+      padding: 18px 12px 8px;
+    }
+
+    .side-nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .side-nav a {
+      display: block;
+      padding: 11px 12px;
+      color: #e3e8eb;
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: background .2s ease, color .2s ease;
+    }
+
+    .side-nav a.active {
+      border-left-color: var(--brass);
+      background: rgba(255,255,255,.07);
+      color: var(--brass-light);
+    }
+
+    .side-nav a:hover {
+      background: rgba(255,255,255,.06);
+    }
+
+    .side-bottom {
+      margin-top: auto;
+      padding: 24px 12px 0;
+      color: #bdc5cc;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .inventory-main {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      margin: 0;
+      padding: 32px clamp(18px, 4vw, 54px) 60px;
+    }
+
+    .inventory-head {
+      margin-bottom: 30px;
+    }
+
+    .inventory-head h1 {
+      font-size: clamp(34px, 4vw, 48px);
+    }
+
+    .inventory-filters,
+    .saved-searches-panel {
+      border-radius: 12px;
+      box-shadow: 0 12px 26px rgba(16,24,38,.06);
+    }
+
+    .property-card {
+      border-radius: 12px;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .property-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 32px rgba(16,24,38,.10);
+    }
+
+    .property-image,
+    .property-image-placeholder {
+      height: 210px;
+    }
+
+    .inventory-search,
+    .inventory-filter {
+      border-radius: 6px;
+    }
+
+    .filter-reset,
+    .pagination-button {
+      background: var(--brass);
+      color: var(--navy-950);
+      border-color: var(--brass);
+      border-radius: 4px;
+    }
+
+    .filter-reset:hover,
+    .pagination-button:hover:not(:disabled) {
+      background: var(--brass-light);
+      color: var(--navy-950);
+    }
+
+    .select-property-button {
+      border-radius: 4px;
+    }
+
+    @media (max-width: 930px) {
+      .layout {
+        grid-template-columns: 200px minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 650px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: auto;
+        height: auto;
+        padding: 15px 16px;
+      }
+
+      .sidebar .logo {
+        padding: 0 8px 10px;
+      }
+
+      .side-label,
+      .side-bottom {
+        display: none;
+      }
+
+      .side-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .side-nav a {
+        padding: 8px;
+      }
+
+      .inventory-main {
+        padding: 23px 16px 45px;
+      }
+    }
+  </style>
+\n  <link rel="stylesheet" href="/realiq-luxury-theme.css">
+
+  <style id="realiq-inventory-upgrade">
+    body {
+      background: #f7f4ec;
+      color: #202b27;
+    }
+
+    .inventory-main {
+      max-width: 1320px;
+      padding: 56px 32px 90px;
+    }
+
+    .inventory-head {
+      position: relative;
+      overflow: hidden;
+      align-items: center;
+      padding: 48px;
+      margin-bottom: 30px;
+      border: 1px solid #e7dfce;
+      border-radius: 16px;
+      background:
+        radial-gradient(ellipse at 95% 5%, rgba(190, 155, 91, .19), transparent 36%),
+        linear-gradient(120deg, #fffdf8 0%, #f4efe3 100%);
+      box-shadow: 0 16px 42px rgba(47, 42, 30, .055);
+    }
+
+    .inventory-head h1 {
+      color: #25372f;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(38px, 5vw, 58px);
+      font-weight: 500;
+      letter-spacing: -.035em;
+    }
+
+    .inventory-head p {
+      color: #74756b;
+      font-size: 14px;
+    }
+
+    .inventory-tools {
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .inventory-search,
+    .inventory-filter {
+      min-height: 48px;
+      border: 1px solid #e5dfd2;
+      border-radius: 8px;
+      background: #fffefa;
+      color: #29352e;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .inventory-search {
+      max-width: 100%;
+      padding: 14px 17px;
+      box-shadow: 0 4px 15px rgba(40, 38, 28, .025);
+    }
+
+    .inventory-search::placeholder {
+      color: #99988e;
+    }
+
+    .inventory-search:focus,
+    .inventory-filter:focus {
+      outline: none;
+      border-color: #b99556;
+      box-shadow: 0 0 0 3px rgba(185, 149, 86, .13);
+    }
+
+    .inventory-filters {
+      gap: 16px;
+      padding: 24px;
+      margin-bottom: 28px;
+      border: 1px solid #e8e1d4;
+      border-radius: 12px;
+      background: #fffefa;
+      box-shadow: 0 10px 30px rgba(47, 42, 30, .04);
+    }
+
+    .filter-field {
+      gap: 9px;
+      color: #77766b;
+      font-size: 10px;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .inventory-filter {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .filter-reset,
+    .pagination-button {
+      min-height: 46px;
+      padding: 12px 19px;
+      border: 1px solid #263b31;
+      border-radius: 7px;
+      background: #263b31;
+      color: #fffdf7;
+      font-size: 11px;
+      letter-spacing: .04em;
+      transition: background .2s ease, border-color .2s ease, transform .2s ease;
+    }
+
+    .filter-reset:hover,
+    .pagination-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: #a8864d;
+      background: #a8864d;
+    }
+
+    .inventory-status {
+      margin: 20px 2px;
+      color: #77766b;
+      font-size: 13px;
+    }
+
+    .property-grid {
+      gap: 26px;
+    }
+
+    .property-card {
+      border: 1px solid #e9e2d6;
+      border-radius: 13px;
+      background: #fffefa;
+      box-shadow: 0 9px 28px rgba(43, 40, 30, .055);
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+
+    .property-card:hover {
+      transform: translateY(-5px);
+      border-color: #d5c29e;
+      box-shadow: 0 20px 42px rgba(43, 40, 30, .11);
+    }
+
+    .property-image,
+    .property-image-placeholder {
+      height: 235px;
+    }
+
+    .property-image {
+      transition: transform .5s ease;
+    }
+
+    .property-card:hover .property-image {
+      transform: scale(1.025);
+    }
+
+    .property-image-placeholder {
+      background: linear-gradient(140deg, #263b31, #405747);
+      color: #e5c991;
+      letter-spacing: .16em;
+    }
+
+    .property-body {
+      gap: 12px;
+      padding: 23px;
+    }
+
+    .property-type {
+      color: #a17c43;
+      font-size: 10px;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .property-body h2,
+    .property-body h3,
+    .property-title {
+      color: #29372f;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 500;
+      letter-spacing: -.015em;
+    }
+
+    .property-price {
+      color: #92713d;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    .property-body button,
+    .property-body .button,
+    .property-body a.button {
+      border-radius: 7px;
+    }
+
+    .pagination-button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    @media (max-width: 900px) {
+      .property-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inventory-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inventory-head {
+        padding: 36px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .inventory-main {
+        padding: 28px 16px 60px;
+      }
+
+      .inventory-head {
+        padding: 28px 22px;
+        border-radius: 12px;
+      }
+
+      .inventory-head h1 {
+        font-size: 37px;
+      }
+
+      .inventory-filters {
+        grid-template-columns: 1fr;
+        padding: 17px;
+      }
+
+      .filter-actions {
+        align-items: stretch;
+      }
+
+      .property-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .property-image,
+      .property-image-placeholder {
+        height: 220px;
+      }
+
+      .property-body {
+        padding: 19px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .property-card,
+      .property-image,
+      .filter-reset,
+      .pagination-button {
+        transition: none;
+      }
+    }
+  </style>
+
+
+  <style id="realiq-inventory-editorial-upgrade">
+    .inventory-head {
+      min-height: 285px;
+      padding: 48px 42% 48px 48px;
+      isolation: isolate;
+      background:
+        radial-gradient(ellipse at 80% 15%, rgba(190,155,91,.20), transparent 38%),
+        linear-gradient(115deg, #fffdf8 0%, #f2ecdf 100%);
+    }
+
+    .inventory-head::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 0;
+      right: 0;
+      width: 36%;
+      height: 100%;
+      background:
+        linear-gradient(90deg, rgba(244,239,227,.15), rgba(38,59,49,.08)),
+        repeating-linear-gradient(135deg, transparent 0 18px, rgba(169,139,87,.09) 19px 20px);
+      border-left: 1px solid rgba(169,139,87,.18);
+      pointer-events: none;
+    }
+
+    .inventory-head .eyebrow {
+      color: #a17c43;
+      font-size: 10px;
+      letter-spacing: .2em;
+      font-weight: 700;
+    }
+
+    .inventory-head h1 {
+      max-width: 620px;
+      margin: 17px 0 14px;
+      font-size: clamp(42px, 5vw, 62px);
+      line-height: 1.04;
+    }
+
+    .inventory-head p {
+      max-width: 540px;
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    .inventory-tools {
+      padding: 8px;
+      border: 1px solid #e8e1d4;
+      border-radius: 11px;
+      background: #fffefa;
+      box-shadow: 0 10px 28px rgba(43,40,30,.045);
+    }
+
+    .inventory-search {
+      max-width: none;
+      min-height: 54px;
+      padding-left: 18px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      font-size: 14px;
+    }
+
+    .inventory-search:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .inventory-filters {
+      position: relative;
+      padding: 25px;
+      border-radius: 11px;
+    }
+
+    .inventory-filters::before {
+      content: "REFINE YOUR SEARCH";
+      display: block;
+      grid-column: 1 / -1;
+      margin-bottom: 1px;
+      color: #a17c43;
+      font: 700 10px 'Inter', sans-serif;
+      letter-spacing: .16em;
+    }
+
+    .filter-field {
+      font-size: 9px;
+      letter-spacing: .12em;
+    }
+
+    .property-grid {
+      align-items: stretch;
+      row-gap: 30px;
+    }
+
+    .property-card {
+      position: relative;
+      border-radius: 12px;
+    }
+
+    .property-card:hover {
+      transform: translateY(-6px);
+    }
+
+    .property-image,
+    .property-image-placeholder {
+      height: 245px;
+    }
+
+    .property-body {
+      padding: 24px;
+    }
+
+    .property-body > * {
+      min-width: 0;
+    }
+
+    .saved-searches-panel {
+      padding: 26px;
+      border: 1px solid #e8e1d4;
+      border-radius: 12px;
+      background: #fffefa;
+      box-shadow: 0 10px 28px rgba(43,40,30,.04);
+    }
+
+    .pagination-controls {
+      padding: 16px;
+      border: 1px solid #e8e1d4;
+      border-radius: 10px;
+      background: #fffefa;
+    }
+
+    @media (max-width: 760px) {
+      .inventory-head {
+        min-height: 0;
+        padding: 34px 25px;
+      }
+
+      .inventory-head::after {
+        width: 22%;
+        opacity: .45;
+      }
+
+      .inventory-head h1 {
+        max-width: 85%;
+        font-size: clamp(37px, 8vw, 48px);
+      }
+
+      .inventory-head p {
+        max-width: 90%;
+      }
+
+      .inventory-tools {
+        padding: 5px;
+      }
+
+      .inventory-filters {
+        padding: 19px;
+      }
+
+      .property-image,
+      .property-image-placeholder {
+        height: 225px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .inventory-head::after {
+        display: none;
+      }
+
+      .inventory-head h1,
+      .inventory-head p {
+        max-width: 100%;
+      }
+
+      .saved-searches-panel {
+        padding: 19px;
+      }
+    }
+  </style>
+
 </head>
 
 <body>
 
-  <header>
-    <div class="nav">
+  <div class="layout">
+    <aside class="sidebar">
       <a class="logo" href="/">
-        <span class="mark">?</span>RealIQ
+        <span class="mark">R</span>RealIQ
       </a>
 
-      <nav class="links">
-        <a href="/#listings">Home listings</a>
+      <div class="side-label">Buyer workspace</div>
+      <nav class="side-nav" aria-label="Buyer navigation">
+        <a href="/buyer/dashboard">Overview</a>
+        <a href="/buyer/discover">Discover Property</a>
+        <a href="/inventory" class="active" aria-current="page">Live Inventory</a>
+        <a href="/buyer/journey">My Buying Journey</a>
+        <a href="/buyer-saved-properties.html">Saved Properties</a>
+        <a href="/buyer/profile">My Profile</a>
       </nav>
 
-      <div class="nav-cta">
-        <a class="btn btn-ghost" href="/">Back to home</a>
+      <div class="side-bottom">
+        Your property search, all in one place.
       </div>
-    </div>
-  </header>
-
-  <main class="inventory-main">
+    </aside>
+<main class="inventory-main">
 
     <div class="inventory-head">
       <div>
@@ -667,7 +1293,7 @@
     </section>
 
 
-  </main>
+  </main>\n  </div><!-- /.layout -->
 
   <script>
     // --------------------------------------------------
