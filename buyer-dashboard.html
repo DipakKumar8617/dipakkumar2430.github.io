@@ -354,6 +354,336 @@
     }
     .shortlist-comparison-result th { background: #f8fafc; }
   </style>
+    <link rel="stylesheet" href="/realiq-luxury-theme.css">
+
+<style>
+.workspace-section,.journey-section{margin-top:38px}
+.workspace-section .section-head,.journey-section .section-head{margin:0 0 18px}
+.workspace-section .section-head h2,.journey-section .section-head h2{margin:5px 0 0}
+.workspace-view-link{color:var(--emerald);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.workspace-view-link span,.tile-action span{font-size:19px;margin-left:5px;transition:transform .2s}
+.workspace-view-link:hover span,.workspace-tile:hover .tile-action span{display:inline-block;transform:translateX(4px)}
+.workspace-grid{gap:17px}
+.workspace-tile{display:flex;flex-direction:column;min-height:230px;padding:22px;text-decoration:none;color:var(--ink);border-radius:14px;transition:transform .22s,border-color .22s,box-shadow .22s}
+.workspace-tile:hover{transform:translateY(-4px);border-color:var(--rq-sage,#74816d);box-shadow:0 18px 34px rgba(32,48,34,.11)}
+.tile-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.tile-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--rq-paper,#eeece5);color:var(--emerald);font-size:25px}
+.tile-number{font:11px 'IBM Plex Mono',monospace;color:var(--rq-muted,#77796f)}
+.workspace-tile .tile-label{font-size:9px;letter-spacing:.13em;color:var(--rq-sage,#74816d)}
+.workspace-tile h3{margin:8px 0;font-size:20px}
+.workspace-tile p{font-size:12px;line-height:1.7}
+.tile-action{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:18px;color:var(--emerald);font-size:12px;font-weight:600}
+.journey-flow{grid-template-columns:repeat(6,minmax(0,1fr));gap:0}
+.journey-flow .journey-step{position:relative;min-width:0;min-height:158px;padding:17px 13px;border:1px solid var(--line);border-top:3px solid var(--paper-dim);border-radius:10px;background:var(--white)}
+.journey-flow .journey-step:not(:last-child){margin-right:13px}
+.journey-flow .journey-step:not(:last-child)::after{content:'?';position:absolute;right:-17px;top:48%;z-index:2;color:var(--rq-sage,#74816d);font-size:19px;font-weight:600}
+.journey-flow .journey-step.current{border:1px solid var(--rq-sage,#74816d);border-top:3px solid var(--emerald);background:var(--rq-ivory,#f8f7f3)}
+.journey-count{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--rq-paper,#eeece5);color:var(--emerald);font:11px 'IBM Plex Mono',monospace}
+.journey-state{display:block;margin-top:15px;font:8px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:var(--rq-sage,#74816d)}
+.journey-flow .journey-step strong{font-size:12px;line-height:1.4}
+.journey-flow .journey-step p{margin:6px 0 0;color:var(--slate);font-size:10px;line-height:1.5}
+.journey-next{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:25px;padding:28px;background:var(--rq-ivory,#f8f7f3);border-color:var(--rq-line,rgba(45,48,40,.13))}
+.journey-next h3{font-size:clamp(21px,2.5vw,27px);margin:8px 0}
+.journey-next p{max-width:620px}
+.journey-next .footer-actions{margin-top:0}
+.journey-next .action-link span{margin-left:8px;font-size:17px}
+@media(max-width:1100px){.journey-flow{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.journey-flow .journey-step:not(:last-child){margin-right:0}.journey-flow .journey-step::after{display:none}}
+@media(max-width:650px){.workspace-section .section-head,.journey-section .section-head{align-items:flex-start;flex-direction:column}.workspace-grid{grid-template-columns:1fr}.workspace-tile{min-height:205px}.journey-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.journey-next{align-items:flex-start;flex-direction:column}.journey-next .footer-actions{margin-top:5px}}
+</style>
+
+
+<style>
+/* REALIQ WORKSPACE PHOTO CARDS */
+.workspace-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 245px;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 12px 30px rgba(15,35,25,.14);
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+
+.workspace-tile::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1);
+  transition: transform .65s cubic-bezier(.2,.7,.2,1);
+  pointer-events: none;
+}
+
+.workspace-tile::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(12,28,20,.25) 0%,
+    rgba(12,28,20,.48) 42%,
+    rgba(8,22,15,.91) 100%
+  );
+  pointer-events: none;
+}
+
+.workspace-tile > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-tile,
+.workspace-tile * {
+  color: #fff !important;
+}
+
+.workspace-tile:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 42px rgba(15,35,25,.25);
+}
+
+.workspace-tile:hover::before {
+  transform: scale(1.08);
+}
+
+.workspace-tile .workspace-icon {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.25);
+  backdrop-filter: blur(8px);
+}
+
+.workspace-tile:nth-child(1)::before {
+  background-image: url("https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=85");
+}
+
+.workspace-tile:nth-child(2)::before {
+  background-image: url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=85");
+}
+
+.workspace-tile:nth-child(3)::before {
+  background-image: url("https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85");
+}
+
+.workspace-tile:nth-child(4)::before {
+  background-image: url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85");
+}
+
+.workspace-tile:nth-child(5)::before {
+  background-image: url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85");
+}
+
+.workspace-tile:nth-child(6)::before {
+  background-image: url("https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1200&q=85");
+}
+
+@media (max-width: 600px) {
+  .workspace-tile {
+    min-height: 215px;
+  }
+}
+</style>
+
+
+<style>
+/* REALIQ BUYING JOURNEY PHOTO CARDS */
+.journey-flow .journey-step {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 245px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 15px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 12px 28px rgba(15,35,25,.17);
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+
+.journey-flow .journey-step::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(9,24,17,.08) 0%,
+    rgba(9,24,17,.28) 42%,
+    rgba(7,19,13,.94) 100%
+  );
+}
+
+.journey-flow .journey-step:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 38px rgba(15,35,25,.26);
+}
+
+.journey-flow .journey-step > * {
+  position: relative;
+  z-index: 1;
+  color: #fff !important;
+}
+
+.journey-flow .journey-count {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 35px;
+  min-height: 35px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.45);
+  backdrop-filter: blur(8px);
+}
+
+.journey-flow .journey-state {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  opacity: .9;
+}
+
+.journey-flow .journey-step strong {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.journey-flow .journey-step p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: .92;
+}
+
+/* 01 ? Buyer profile portrait */
+.journey-flow .journey-step:nth-child(1) {
+  background-image: url("https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=85");
+  background-size: cover;
+  background-position: center 25%;
+}
+
+/* 02 ? Discover multiple homes in a visual strip */
+.journey-flow .journey-step:nth-child(2) {
+  background-image: url("https://neohouse.vn/wp-content/uploads/2024/08/biet-thu-2-ty-1-tang-anh-bia.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* 03 ? Shortlist and visit: the chosen property */
+.journey-flow .journey-step:nth-child(3) {
+  background-image: url("https://static.timesnewsgroup.com.au/prod/uploads/sites/2/2025/04/146_93034.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* 04 ? Select your home: same property as the shortlist */
+.journey-flow .journey-step:nth-child(4) {
+  background-image: url("https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=900&q=85");
+}
+
+/* 05 ? Buyer and property professionals reviewing paperwork */
+.journey-flow .journey-step:nth-child(5) {
+  background-image: url("https://www.equifax.com.au/knowledge-hub/sites/default/files/AML_CTF%20Tranche%202%20-%20What%20Real%20Estate%20Agents%20Need%20to%20Know.png");
+  background-position: center;
+}
+
+/* 06 ? Family moving into their new home */
+.journey-flow .journey-step:nth-child(6) {
+  background-image: url("https://hausbaujournal.com/images/kfw-300-wohneigentum-familien-hero.webp");
+  background-size: cover;
+  background-position: center;
+}
+
+@media (max-width: 600px) {
+  .journey-flow .journey-step {
+    min-height: 205px;
+  }
+}
+</style>
+
+
+<style>
+.buyer-sidebar-logout {
+  margin: auto 14px 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(150, 140, 110, .22);
+}
+.buyer-logout-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid rgba(145, 105, 65, .24);
+  border-radius: 10px;
+  background: rgba(255,255,255,.65);
+  color: #76513b;
+  font: 600 13px Inter, sans-serif;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.buyer-logout-button:hover {
+  background: #f3e9dc;
+  border-color: #b58b59;
+}
+.buyer-logout-button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+</style>
+
+
+<style id="buyer-logout-shared-style">
+.buyer-sidebar-logout {
+  margin: auto 14px 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(150,140,110,.22);
+}
+.buyer-logout-button {
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 16px;border:1px solid rgba(145,105,65,.24);
+  border-radius:10px;background:rgba(255,255,255,.65);
+  color:#76513b;font:600 13px Inter,sans-serif;cursor:pointer;
+}
+.buyer-logout-button:hover {background:#f3e9dc;border-color:#b58b59}
+.buyer-logout-button:disabled {opacity:.6;cursor:wait}
+</style>
+
+
+<style id="buyer-dashboard-activity-styles">
+.buyer-activity-section{margin:34px 0}
+.buyer-activity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start}
+.buyer-activity-panel{min-width:0;padding:22px;border:1px solid rgba(169,137,83,.24);border-radius:16px;background:#fffefa;box-shadow:0 8px 28px rgba(44,36,24,.045)}
+.buyer-activity-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.buyer-activity-heading h3{margin:5px 0 0}
+.buyer-activity-heading a{color:#8a6b35;font-size:.82rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.buyer-activity-panel>p{color:#777064;font-size:.88rem;line-height:1.55}
+.buyer-activity-list{display:grid;gap:12px}
+.buyer-activity-list>article{padding:14px;border:1px solid #eee8dc;border-radius:12px;background:#fff}
+.buyer-activity-list h3{margin:0 0 6px;font-size:.98rem}
+.buyer-activity-list p{margin:5px 0;color:#746e63;font-size:.86rem}
+.buyer-activity-list a{color:#65502d;text-decoration:none}
+.buyer-activity-list a:hover{text-decoration:underline}
+.buyer-activity-list button,.buyer-compare-actions button{padding:8px 12px;border:1px solid #b99a63;border-radius:8px;background:#fff;color:#72572c;cursor:pointer;font:inherit;font-size:.84rem}
+.buyer-activity-list button:disabled,.buyer-compare-actions button:disabled{opacity:.5;cursor:not-allowed}
+.buyer-compare-actions{margin-top:14px}
+.buyer-comparison{max-width:100%;overflow-x:auto}
+.buyer-comparison table{width:100%;border-collapse:collapse;font-size:.82rem}
+.buyer-comparison th,.buyer-comparison td{padding:9px;border:1px solid #eee8dc;text-align:left;vertical-align:top}
+@media(max-width:1050px){.buyer-activity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.buyer-activity-grid{grid-template-columns:1fr}.buyer-activity-panel{padding:17px}}
+</style>
+
 </head>
 
 <body>
@@ -370,19 +700,28 @@
 
         <a href="/buyer/dashboard" class="active" aria-current="page">Overview</a>
 
-        <a href="#discovery">Discover property</a>
+        <a href="/buyer/discover">Discover property</a>
 
         <a href="/inventory">Live inventory</a>
 
-        <a href="#journey">My buying journey</a>
+        <a href="/buyer/journey">My buying journey</a>
+        <a href="/buyer-saved-properties.html">Saved properties</a>
 
-        <a href="/buyer/onboarding">My profile</a>
+        <a href="/buyer/profile">My profile</a>
 
       </nav>
 
       <div class="side-bottom">One buyer workspace for Indian residents and overseas buyers.</div>
 
-    </aside>
+
+    <div class="buyer-sidebar-logout">
+      <button type="button" class="buyer-logout-button" id="buyerLogoutButton">
+        <span aria-hidden="true">?</span>
+        <span>Log out</span>
+      </button>
+    </div>
+
+</aside>
 
 
 
@@ -418,7 +757,7 @@
 
       <h1>Welcome, <span id="buyerName">Buyer</span>.</h1>
 
-      <p class="lead">Your property journey, organized around your goals. Your profile is saved; discovery, live inventory and transaction tools will connect here as their services are implemented.</p>
+      <p class="lead">Your property journey, organized around your goals. Explore live listings, keep your favourite properties together, and manage your site visits from one place.</p>
 
 
 
@@ -432,209 +771,161 @@
 
         </div>
 
-        <a class="edit-link" href="/buyer/onboarding">Edit profile ?</a>
+        <a class="edit-link" href="/buyer/profile">Edit profile ?</a>
 
       </section>
 
 
 
-      <div class="section-head" id="discovery">
 
-        <div>
-
-          <h2>Your workspace</h2>
-
-          <p>Tools are shown by module; unconnected services are clearly marked.</p>
-
+      <section class="workspace-section" id="discovery">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">EVERYTHING IN ONE PLACE</div>
+            <h2>Your property workspace</h2>
+            <p>Explore, compare and move towards a home that feels right.</p>
+          </div>
+          <a class="workspace-view-link" href="/buyer/discover">Explore properties <span>?</span></a>
         </div>
 
-      </div>
-
-
-
-      <div class="grid">
-
-        <article class="tile">
-
-          <div class="tile-label">01 / Discover</div>
-
-          <h3>Property discovery</h3>
-
-          <p>Search and filter projects by city, budget, type, configuration and possession.</p>
-
-          <span class="coming">Next phase &middot; Not connected</span>
-
-        </article>
-
-        <article class="tile" id="inventory">
-
-          <div class="tile-label">02 / Inventory</div>
-
-          <h3>Available units</h3>
-
-          <p>The shared inventory service will supply current unit status and price details.</p>
-
-          <span class="coming">Next phase &middot; No live feed yet</span>
-
-        </article>
-
-        <article class="tile">
-
-          <div class="tile-label">03 / Shortlist</div>
-
-          <h3>Saved properties</h3>
-
-          <p>Manage saved properties and compare your shortlisted options.</p>
-
-          <a class="action-secondary" href="#buyerShortlist">Open my shortlist</a>
-
-        </article>
-
-        <article class="tile">
-
-          <div class="tile-label">04 / Site visits</div>
-
-          <h3>Visits &amp; tours</h3>
-
-          <p>Track on-site visits, remote tours and confirmed appointments in one place.</p>
-
-          <span class="coming">Next phase &middot; Not connected</span>
-
-        </article>
-
-        <article class="tile">
-
-          <div class="tile-label">05 / Finance</div>
-
-          <h3>Finance &amp; payments</h3>
-
-          <p>Affordability, finance partner workflows and payment milestones belong here.</p>
-
-          <span class="coming">Next phase &middot; Not connected</span>
-
-        </article>
-
-        <article class="tile">
-
-          <div class="tile-label">06 / Documents</div>
-
-          <h3>Document centre</h3>
-
-          <p>Buyer, property and booking documents will be managed with access controls.</p>
-
-          <span class="coming">Next phase &middot; Not connected</span>
-
-        </article>
-
-      </div>
-
-
-
-      <div class="section-head" id="journey">
-
-        <div>
-
-          <h2>My buying journey</h2>
-
-          <p>Only your completed onboarding step is active at this stage.</p>
-
+        <div class="grid workspace-grid">
+          <a class="tile workspace-tile" href="/buyer/discover">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">01</span></div>
+            <div class="tile-label">FIND YOUR PLACE</div>
+            <h3>Discover properties</h3>
+            <p>Explore homes by location, budget and the lifestyle you have in mind.</p>
+            <span class="tile-action">Start exploring <span>?</span></span>
+          </a>
+          <a class="tile workspace-tile" id="inventory" href="/inventory">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">02</span></div>
+            <div class="tile-label">EXPLORE OPTIONS</div>
+            <h3>Live inventory</h3>
+            <p>Browse listings and review the details of properties that interest you.</p>
+            <span class="tile-action">View inventory <span>?</span></span>
+          </a>
+          <a class="tile workspace-tile" href="/buyer-saved-properties.html">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">03</span></div>
+            <div class="tile-label">YOUR COLLECTION</div>
+            <h3>Saved properties</h3>
+            <p>Keep your favourite homes together and revisit your shortlist anytime.</p>
+            <span class="tile-action">View shortlist <span>?</span></span>
+          </a>
+          <a class="tile workspace-tile" href="/buyer/journey">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">04</span></div>
+            <div class="tile-label">PLAN A VISIT</div>
+            <h3>Visits &amp; tours</h3>
+            <p>Keep track of property visits, tour requests and your next steps.</p>
+            <span class="tile-action">View my journey <span>?</span></span>
+          </a>
+          <a class="tile workspace-tile" href="/buyer/profile">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">05</span></div>
+            <div class="tile-label">PLAN WITH CLARITY</div>
+            <h3>Budget &amp; preferences</h3>
+            <p>Review your budget, preferred configuration and what matters to you.</p>
+            <span class="tile-action">Review preferences <span>?</span></span>
+          </a>
+          <a class="tile workspace-tile" href="/buyer/journey">
+            <div class="tile-top"><span class="tile-icon">?</span><span class="tile-number">06</span></div>
+            <div class="tile-label">STAY ORGANISED</div>
+            <h3>Purchase milestones</h3>
+            <p>Follow your buying journey and keep important milestones in view.</p>
+            <span class="tile-action">View milestones <span>?</span></span>
+          </a>
         </div>
-
-      </div>
-
-      <div class="journey">
-
-        <div class="journey-step current"><span>STEP 01</span><strong>Buyer profile</strong></div>
-
-        <div class="journey-step"><span>STEP 02</span><strong>Discover</strong></div>
-
-        <div class="journey-step"><span>STEP 03</span><strong>Shortlist / visit</strong></div>
-
-        <div class="journey-step"><span>STEP 04</span><strong>Select a unit</strong></div>
-
-      </div>
+      </section>
 
 
+      <section class="buyer-activity-section" id="buyerActivity">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">YOUR PROPERTY ACTIVITY</div>
+            <h2>Your activity at a glance</h2>
+            <p>Pick up where you left off and keep track of the properties that matter.</p>
+          </div>
+        </div>
+        <div class="buyer-activity-grid">
+          <article class="buyer-activity-panel">
+            <div class="buyer-activity-heading">
+              <div><div class="eyebrow">RECENT BROWSING</div><h3>Recently viewed</h3></div>
+              <a href="/inventory">Explore inventory</a>
+            </div>
+            <p id="recentlyViewedStatus" role="status" aria-live="polite">Loading recently viewed properties...</p>
+            <div class="buyer-activity-list" id="recentlyViewedList"></div>
+          </article>
+          <article class="buyer-activity-panel">
+            <div class="buyer-activity-heading">
+              <div><div class="eyebrow">YOUR COLLECTION</div><h3>Saved properties</h3></div>
+              <a href="/buyer-saved-properties.html">View all saved</a>
+            </div>
+            <p id="shortlistStatus" role="status" aria-live="polite">Loading saved properties...</p>
+            <div class="buyer-activity-list" id="shortlistList"></div>
+            <div class="buyer-compare-actions">
+              <button type="button" id="compareShortlistButton" disabled onclick="compareShortlistedProperties()">Compare selected</button>
+              <p id="shortlistCompareStatus" role="status" aria-live="polite"></p>
+            </div>
+            <div id="shortlistComparison" class="buyer-comparison"></div>
+          </article>
+          <article class="buyer-activity-panel">
+            <div class="buyer-activity-heading">
+              <div><div class="eyebrow">PROPERTY TOURS</div><h3>Site visits</h3></div>
+              <a href="/buyer/journey">View my journey</a>
+            </div>
+            <p id="siteVisitsStatus" role="status" aria-live="polite">Loading site visits...</p>
+            <div class="buyer-activity-list" id="siteVisitsList"></div>
+          </article>
+        </div>
+      </section>
+      <section class="journey-section" id="journey">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">ONE STEP AT A TIME</div>
+            <h2>Your buying journey</h2>
+            <p>A clear path from your first search to the keys to your new home.</p>
+          </div>
+          <a class="workspace-view-link" href="/buyer/journey">View journey <span>?</span></a>
+        </div>
+        <div class="journey journey-flow">
+          <div class="journey-step current">
+            <span class="journey-count">01</span><span class="journey-state">YOUR STARTING POINT</span>
+            <strong>Buyer profile</strong><p>Your details and preferences</p>
+          </div>
+          <div class="journey-step">
+            <span class="journey-count">02</span><span class="journey-state">EXPLORE</span>
+            <strong>Discover homes</strong><p>Find properties that fit</p>
+          </div>
+          <div class="journey-step">
+            <span class="journey-count">03</span><span class="journey-state">NARROW IT DOWN</span>
+            <strong>Shortlist &amp; visit</strong><p>Compare and experience</p>
+          </div>
+          <div class="journey-step">
+            <span class="journey-count">04</span><span class="journey-state">MAKE YOUR CHOICE</span>
+            <strong>Select your home</strong><p>Choose the right property</p>
+          </div>
+          <div class="journey-step">
+            <span class="journey-count">05</span><span class="journey-state">MOVE FORWARD</span>
+            <strong>Booking &amp; paperwork</strong><p>Review the purchase steps</p>
+          </div>
+          <div class="journey-step">
+            <span class="journey-count">06</span><span class="journey-state">THE BIG MOMENT</span>
+            <strong>Welcome home</strong><p>Prepare for handover</p>
+          </div>
+        </div>
+      </section>
 
-      <section class="next-panel">
-
-        <h3>Your next step</h3>
-
-        <p>Your profile is saved. The next development milestone is connected property discovery and a shared inventory API. No property availability, prices or booking statuses are being simulated here.</p>
-
+      <section class="next-panel journey-next">
+        <div>
+          <div class="eyebrow">A GOOD PLACE TO BEGIN</div>
+          <h3>Your next chapter starts with the right home.</h3>
+          <p>Your buyer profile is saved. Start exploring properties, build a shortlist and arrange your next steps at your own pace.</p>
+        </div>
         <div class="footer-actions">
-
-          <a class="action-link" href="/buyer/onboarding">Review my profile</a>
-
-          <a class="action-secondary" href="/dashboard">Back to main dashboard</a>
-
+          <a class="action-link" href="/buyer/discover">Explore properties <span>?</span></a>
+          <a class="action-secondary" href="/buyer/profile">Review my profile</a>
         </div>
-
       </section>
 
       <p class="status" id="pageStatus" role="status" aria-live="polite"></p>
-
-
-
-      <section class="recently-viewed-section" aria-labelledby="recentlyViewedHeading">
-
-        <div class="section-head">
-
-          <div>
-
-            <h2 id="recentlyViewedHeading">Recently viewed</h2>
-
-            <p>Properties you have opened recently.</p>
-
-          </div>
-
-          <a href="/inventory">Explore inventory</a>
-
-        </div>
-
-        <p id="recentlyViewedStatus" class="status" role="status" aria-live="polite">Loading recently viewed properties...</p>
-
-        <div id="recentlyViewedList" class="recently-viewed-grid"></div>
-
-      </section>
-
-      <section id="buyerShortlist" class="buyer-shortlist-section" aria-labelledby="shortlistHeading">
-        <div class="section-head">
-          <div>
-            <h2 id="shortlistHeading">My shortlist</h2>
-            <p>Your saved properties and their latest availability status.</p>
-          </div>
-          <a href="/inventory">Explore properties</a>
-        </div>
-        <p id="shortlistStatus" class="status" role="status" aria-live="polite">Loading your shortlist...</p>
-        <div id="shortlistList" class="shortlist-grid"></div>
-
-        <div class="shortlist-comparison">
-          <div class="section-head">
-            <div>
-              <h3>Compare properties</h3>
-              <p>Select between 2 and 4 saved properties to compare.</p>
-            </div>
-            <button id="compareShortlistButton" type="button" disabled>Compare selected</button>
-          </div>
-          <p id="shortlistCompareStatus" class="status" role="status" aria-live="polite"></p>
-          <div id="shortlistComparison" class="shortlist-comparison-result"></div>
-        </div>
-      </section>
-
-      <section class="site-visits-section" aria-labelledby="siteVisitsHeading">
-        <div class="section-head">
-          <div>
-            <h2 id="siteVisitsHeading">My site visits</h2>
-            <p>Track your submitted visit requests and appointment status.</p>
-          </div>
-          <a href="/inventory">Explore properties</a>
-        </div>
-        <p id="siteVisitsStatus" class="status" role="status" aria-live="polite">Loading your site visits...</p>
-        <div id="siteVisitsList" class="site-visits-list"></div>
-      </section>
-
-    </main>
+</main>
 
   </div>
 
@@ -1170,13 +1461,7 @@
         status.textContent = error.message || 'Your shortlist is temporarily unavailable.';
       }
     }
-
-    document.getElementById('compareShortlistButton').addEventListener(
-      'click',
-      compareShortlistedProperties
-    );
-
-    async function loadBuyerWorkspace() {
+async function loadBuyerWorkspace() {
 
       const status = document.getElementById('pageStatus');
 
@@ -1330,6 +1615,12 @@
 
         }
 
+        // Load activity once after the buyer session and profile are verified.
+        await Promise.all([
+          loadRecentlyViewed(),
+          loadBuyerShortlist(),
+          loadBuyerSiteVisits()
+        ]);
       } catch (error) {
 
         status.textContent = error.message || 'Could not load your Buyer OS.';
@@ -1342,13 +1633,43 @@
 
     loadBuyerWorkspace();
 
-    loadRecentlyViewed();
 
-    loadBuyerSiteVisits();
 
-    loadBuyerShortlist();
+
+
+
 
   </script>
+
+
+<script id="buyer-logout-shared-script">
+(() => {
+  const button = document.getElementById("buyerLogoutButton");
+  if (!button || button.dataset.logoutReady) return;
+  button.dataset.logoutReady = "true";
+
+  button.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to log out?")) return;
+
+    button.disabled = true;
+    button.querySelector("span:last-child").textContent = "Logging out...";
+
+    try {
+      const response = await fetch("/api/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Accept": "application/json"}
+      });
+      if (!response.ok) throw new Error("Logout failed");
+      location.replace("/buyer/login?logged_out=1");
+    } catch (error) {
+      button.disabled = false;
+      button.querySelector("span:last-child").textContent = "Log out";
+      alert("Unable to log out. Please try again.");
+    }
+  });
+})();
+</script>
 
 </body>
 
