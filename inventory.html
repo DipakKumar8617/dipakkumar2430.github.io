@@ -2019,6 +2019,25 @@ if (Number.isSafeInteger(propertyId) && propertyId > 0) {
     // --------------------------------------------------
 
     loadSavedSearches();
+    const discoverPresetParams = new URLSearchParams(window.location.search);
+    const discoverPresetFields = {
+      city: cityInput,
+      state: stateInput,
+      property_type: typeInput,
+      min_price: minPriceInput,
+      max_price: maxPriceInput,
+      min_bedrooms: minBedroomsInput,
+      max_bedrooms: maxBedroomsInput,
+      min_area: minAreaInput,
+      max_area: maxAreaInput,
+      q: searchInput
+    };
+    Object.entries(discoverPresetFields).forEach(([key, input]) => {
+      if (discoverPresetParams.has(key)) {
+        input.value = discoverPresetParams.get(key) || '';
+      }
+    });
+
     loadInventory(1);
   </script>
 
