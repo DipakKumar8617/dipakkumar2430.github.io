@@ -1,0 +1,441 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saved Properties | RealIQ Buyer OS</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body{background:var(--paper);color:var(--ink);min-height:100vh}
+    .shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+    aside{background:var(--navy-950);color:white;padding:28px 18px}
+    .logo{display:block;color:white;text-decoration:none;padding:0 12px 30px;font-size:22px}
+    .nav-label{font:10px 'IBM Plex Mono',monospace;color:#b9c3cc;letter-spacing:.14em;text-transform:uppercase;padding:12px}
+    nav{display:grid;gap:5px}
+    nav a{padding:12px;color:#e3e8eb;text-decoration:none;font-size:13px}
+    nav a.active{border-left:2px solid var(--brass);background:#ffffff12;color:var(--brass-light)}
+    main{padding:36px clamp(18px,4vw,56px);min-width:0}
+    .crumb{font:10px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+    h1{font-size:clamp(32px,4vw,46px);margin:20px 0 8px}
+    .lead{color:var(--slate);line-height:1.7;max-width:700px}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:30px 0 16px}
+    .toolbar h2{margin:0;font-size:23px}
+    .muted{color:var(--slate);font-size:13px}
+    .button{padding:11px 15px;border:1px solid var(--line);background:white;color:var(--ink);cursor:pointer;font:600 12px Inter,sans-serif}
+    .button.primary{background:var(--brass);border-color:var(--brass);color:var(--navy-950)}
+    .button.danger{color:#a12b2b}
+    .button:disabled{opacity:.45;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+    .property{background:white;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}
+    .property img{display:block;width:100%;height:170px;object-fit:cover;background:#e9edf0}
+    .property-body{padding:17px}
+    .property h3{font-size:18px;margin:0 0 8px}
+    .property h3 a{color:inherit;text-decoration:none}
+    .property p{font-size:13px;color:var(--slate);line-height:1.6;margin:7px 0}
+    .price{font-size:17px;font-weight:700;color:var(--ink)!important}
+    .status-pill{display:inline-block;background:#f1f5f9;padding:5px 8px;font:10px 'IBM Plex Mono',monospace;text-transform:uppercase}
+    .actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:15px}
+    .select-label{font-size:12px;display:flex;gap:7px;align-items:center}
+    .compare-panel{margin-top:34px;background:white;border:1px solid var(--line);border-radius:10px;padding:20px}
+    .compare-panel h2{margin:0 0 6px;font-size:22px}
+    .table-wrap{overflow-x:auto;margin-top:15px}
+    table{border-collapse:collapse;width:100%;min-width:540px}
+    th,td{padding:12px;border:1px solid var(--line);text-align:left;font-size:13px}
+    th{background:#f6f7f8}
+    .message{padding:14px 0;color:var(--slate);font-size:13px;line-height:1.6}
+    .empty{padding:35px 20px;background:white;border:1px solid var(--line);border-radius:10px;text-align:center}
+    .empty h3{margin:0 0 8px}
+    .empty a{display:inline-block;margin-top:12px;color:var(--ink)}
+    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .saved-controls{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(155px,1fr));gap:10px;align-items:center;margin:18px 0 20px}
+    .saved-controls input,.saved-controls select{width:100%;min-width:0;padding:12px 13px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font:13px Inter,sans-serif}
+    .saved-controls input:focus,.saved-controls select:focus{outline:2px solid var(--brass);outline-offset:2px}
+    #selectionCount{grid-column:1/-1}
+    .property{transition:border-color .18s,box-shadow .18s}
+    .property:focus-within{border-color:var(--brass)}
+    .compare-panel{scroll-margin-top:24px}
+    .compare-panel table th:first-child{position:sticky;left:0;z-index:1}
+    .compare-panel td{min-width:150px}
+    @media(max-width:900px){.saved-controls{grid-template-columns:1fr 1fr}.saved-controls input{grid-column:1/-1}}
+    @media(max-width:700px){.shell{grid-template-columns:1fr}aside{padding:14px}.logo{padding:0 8px 12px}.nav-label{display:none}nav{grid-template-columns:repeat(2,minmax(0,1fr))}nav a{padding:9px}.property img{height:190px}main{padding-top:24px}}
+  </style>
+    <link rel="stylesheet" href="/realiq-luxury-theme.css">
+
+<style id="buyer-logout-shared-style">
+.buyer-sidebar-logout {
+  margin: auto 14px 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(150,140,110,.22);
+}
+.buyer-logout-button {
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 16px;border:1px solid rgba(145,105,65,.24);
+  border-radius:10px;background:rgba(255,255,255,.65);
+  color:#76513b;font:600 13px Inter,sans-serif;cursor:pointer;
+}
+.buyer-logout-button:hover {background:#f3e9dc;border-color:#b58b59}
+.buyer-logout-button:disabled {opacity:.6;cursor:wait}
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <a class="logo" href="/">RealIQ</a>
+    <div class="nav-label">Buyer workspace</div>
+    <nav aria-label="Buyer navigation">
+      <a href="/buyer/dashboard">Overview</a>
+      <a href="/buyer/discover">Discover properties</a>
+      <a class="active" href="/buyer-saved-properties.html" aria-current="page">Saved properties</a>
+      <a href="/buyer/profile">My profile</a>
+    </nav>
+
+<div class="buyer-sidebar-logout">
+  <button type="button" class="buyer-logout-button" id="buyerLogoutButton">
+    <span aria-hidden="true">?</span>
+    <span>Log out</span>
+  </button>
+</div>
+
+</aside>
+
+  <main>
+    <div class="crumb">RealIQ / Buyer OS / Saved properties</div>
+    <h1>My saved properties</h1>
+    <p class="lead">Keep your preferred properties together, review their latest published details, and compare up to four shortlisted options.</p>
+
+    <div class="toolbar">
+      <div>
+        <h2>Your shortlist</h2>
+        <p class="muted" id="count">Loading your saved properties...</p>
+      </div>
+      <div class="top-actions">
+        <a class="button" href="/buyer/dashboard">Back to overview</a>
+        <a class="button primary" href="/inventory">Explore properties</a>
+      </div>
+    </div>
+
+    <p class="message" id="status" role="status" aria-live="polite"></p>
+    <section class="saved-controls" aria-label="Shortlist filters">
+      <input id="savedSearch" type="search" placeholder="Search by property, city or type" aria-label="Search saved properties">
+      <select id="savedAvailability" aria-label="Filter by availability">
+        <option value="">All availability</option>
+        <option value="available">Available</option>
+        <option value="sold">Sold</option>
+        <option value="under_construction">Under construction</option>
+      </select>
+      <select id="savedSort" aria-label="Sort saved properties">
+        <option value="default">Default order</option>
+        <option value="price-low">Price: low to high</option>
+        <option value="price-high">Price: high to low</option>
+        <option value="name">Name: A to Z</option>
+      </select>
+      <span class="muted" id="selectionCount">0 selected for comparison</span>
+    </section>
+    <div class="grid" id="properties"></div>
+
+    <section class="compare-panel">
+      <h2>Compare properties</h2>
+      <p class="muted">Choose between two and four properties from your shortlist.</p>
+      <button class="button primary" id="compare" disabled>Compare selected</button>
+      <p class="message" id="compareStatus" role="status" aria-live="polite"></p>
+      <div class="table-wrap" id="comparison"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const list = document.getElementById('properties');
+  const status = document.getElementById('status');
+  const count = document.getElementById('count');
+  const compareButton = document.getElementById('compare');
+  const compareStatus = document.getElementById('compareStatus');
+  const comparison = document.getElementById('comparison');
+  const searchInput = document.getElementById('savedSearch');
+  const availabilityFilter = document.getElementById('savedAvailability');
+  const sortSelect = document.getElementById('savedSort');
+  const selectionCount = document.getElementById('selectionCount');
+  const selected = new Set();
+  let records = [];
+
+  const money = value => value == null
+    ? 'Price on enquiry'
+    : new Intl.NumberFormat('en-IN', {
+        style: 'currency', currency: 'INR', maximumFractionDigits: 0
+      }).format(value);
+
+  const element = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  function updateCompareButton() {
+    compareButton.disabled = selected.size < 2 || selected.size > 4;
+    compareButton.textContent = `Compare selected (${selected.size}/4)`;
+    selectionCount.textContent = `${selected.size} selected for comparison${selected.size === 1 ? ' ? select one more' : selected.size >= 2 ? ' ? ready to compare' : ''}`;
+  }
+
+  function applyFilters() {
+    const query = searchInput.value.trim().toLowerCase();
+    const availability = availabilityFilter.value;
+    const sort = sortSelect.value;
+
+    const filtered = records.filter(record => {
+      const p = record?.property;
+      if (!p) return false;
+      const searchable = [p.title, p.city, p.state, p.property_type].filter(Boolean).join(' ').toLowerCase();
+      const matchesSearch = !query || searchable.includes(query);
+      const matchesAvailability = !availability || String(p.availability_status || '').toLowerCase() === availability;
+      return matchesSearch && matchesAvailability;
+    });
+
+    if (sort === 'price-low') filtered.sort((a, b) => (a.property.price_inr ?? Infinity) - (b.property.price_inr ?? Infinity));
+    if (sort === 'price-high') filtered.sort((a, b) => (b.property.price_inr ?? -Infinity) - (a.property.price_inr ?? -Infinity));
+    if (sort === 'name') filtered.sort((a, b) => (a.property.title || '').localeCompare(b.property.title || ''));
+
+    render(filtered);
+  }
+
+  function render(recordsToRender) {
+    list.replaceChildren();
+    updateCompareButton();
+    comparison.replaceChildren();
+    compareStatus.textContent = '';
+
+    if (!records.length) {
+      list.appendChild(element('div', 'empty'));
+      const empty = list.firstChild;
+      empty.appendChild(element('h3', '', 'Your shortlist is empty'));
+      empty.appendChild(element('p', 'muted', 'Save properties from their detail pages and they will appear here.'));
+      const link = element('a', '', 'Explore available properties');
+      link.href = '/inventory';
+      empty.appendChild(link);
+      count.textContent = '0 saved properties';
+      return;
+    }
+
+    if (!recordsToRender.length) {
+      list.appendChild(element('div', 'empty'));
+      list.firstChild.appendChild(element('h3', '', 'No matching properties'));
+      list.firstChild.appendChild(element('p', 'muted', 'Try changing your search or availability filter.'));
+      count.textContent = `Showing 0 of ${records.length} saved properties`;
+      return;
+    }
+
+    count.textContent = `Showing ${recordsToRender.length} of ${records.length} saved properties`;
+
+    recordsToRender.forEach(record => {
+      const p = record?.property;
+      if (!p || !Number.isInteger(p.id)) return;
+
+      const card = element('article', 'property');
+      if (p.image_url) {
+        const img = element('img');
+        img.src = p.image_url;
+        img.alt = p.title || 'Property image';
+        img.loading = 'lazy';
+        img.onerror = () => img.remove();
+        card.appendChild(img);
+      }
+
+      const body = element('div', 'property-body');
+      const heading = element('h3');
+      const link = element('a', '', p.title || 'Property');
+      link.href = `/property/${p.id}`;
+      heading.appendChild(link);
+      body.appendChild(heading);
+
+      body.appendChild(element('p', '', [p.city, p.state].filter(Boolean).join(', ') || 'Location unavailable'));
+      body.appendChild(element('p', 'price', money(p.price_inr)));
+      body.appendChild(element('p', '', `${p.property_type || 'Property type unavailable'} · ${p.bedrooms == null ? 'Bedrooms unavailable' : `${p.bedrooms} bedrooms`} · ${p.area_sqft == null ? 'Area unavailable' : `${Number(p.area_sqft).toLocaleString('en-IN')} sq.ft.`}`));
+      body.appendChild(element('span', 'status-pill', String(p.availability_status || 'unknown').replaceAll('_', ' ')));
+
+      const actions = element('div', 'actions');
+      const label = element('label', 'select-label');
+      const checkbox = element('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = selected.has(p.id);
+      checkbox.setAttribute('aria-label', `Select ${p.title || 'property'} for comparison`);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          if (selected.size >= 4) {
+            checkbox.checked = false;
+            status.textContent = 'You can compare a maximum of four properties.';
+            return;
+          }
+          selected.add(p.id);
+        } else {
+          selected.delete(p.id);
+        }
+        updateCompareButton();
+      });
+      label.append(checkbox, document.createTextNode(' Compare'));
+      actions.appendChild(label);
+
+      const remove = element('button', 'button danger', 'Remove');
+      remove.type = 'button';
+      remove.addEventListener('click', async () => {
+        if (!window.confirm(`Remove "${p.title || 'this property'}" from your shortlist?`)) return;
+        remove.disabled = true;
+        remove.textContent = 'Removing...';
+        try {
+          const response = await fetch(`/api/buyer/shortlist/${p.id}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json' }
+          });
+          const payload = await response.json().catch(() => null);
+          if (response.status === 401) {
+            window.location.assign('/index.html#login');
+            return;
+          }
+          if (!response.ok) throw new Error(payload?.detail || 'Could not remove this property.');
+          selected.delete(p.id);
+          await loadShortlist();
+          status.textContent = payload?.removed ? 'Property removed from your shortlist.' : 'This property was already removed.';
+        } catch (error) {
+          remove.disabled = false;
+          remove.textContent = 'Remove';
+          status.textContent = error.message || 'Unable to remove this property.';
+        }
+      });
+      actions.appendChild(remove);
+      body.appendChild(actions);
+      card.appendChild(body);
+      list.appendChild(card);
+    });
+  }
+
+  async function loadShortlist() {
+    status.textContent = 'Loading your saved properties...';
+    list.replaceChildren();
+    try {
+      const response = await fetch('/api/buyer/shortlist', {
+        headers: { Accept: 'application/json' }
+      });
+      if (response.status === 401) {
+        status.textContent = 'Please sign in as a buyer to view your saved properties.';
+        count.textContent = 'Sign-in required';
+        return;
+      }
+      if (response.status === 403) {
+        status.textContent = 'Buyer account access is required.';
+        return;
+      }
+      if (!response.ok) throw new Error('Your shortlist is temporarily unavailable.');
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('Unexpected shortlist response.');
+      records = data;
+      const savedIds = new Set(records.map(record => record?.property?.id).filter(Number.isInteger));
+      [...selected].forEach(id => { if (!savedIds.has(id)) selected.delete(id); });
+      applyFilters();
+      status.textContent = records.length ? 'Your saved properties are up to date.' : '';
+    } catch (error) {
+      status.textContent = error.message || 'Unable to load your shortlist.';
+      count.textContent = 'Unable to load';
+    }
+  }
+
+  const comparisonFields = [
+    ['Property', p => p.title || '—'],
+    ['Type', p => p.property_type || '—'],
+    ['Location', p => [p.city, p.state].filter(Boolean).join(', ') || '—'],
+    ['Price', p => money(p.price_inr)],
+    ['Bedrooms', p => p.bedrooms == null ? '—' : String(p.bedrooms)],
+    ['Area', p => p.area_sqft == null ? '—' : `${Number(p.area_sqft).toLocaleString('en-IN')} sq.ft.`],
+    ['Availability', p => String(p.availability_status || 'unknown').replaceAll('_', ' ')]
+  ];
+
+  async function compareSelected() {
+    const ids = [...selected];
+    comparison.replaceChildren();
+    if (ids.length < 2 || ids.length > 4) return;
+    compareButton.disabled = true;
+    compareStatus.textContent = 'Comparing your selected properties...';
+
+    try {
+      const params = new URLSearchParams();
+      ids.forEach(id => params.append('property_ids', String(id)));
+      const response = await fetch(`/api/buyer/shortlist/compare?${params}`, {
+        headers: { Accept: 'application/json' }
+      });
+      const payload = await response.json().catch(() => null);
+      if (response.status === 401) {
+        window.location.assign('/index.html#login');
+        return;
+      }
+      if (!response.ok) throw new Error(payload?.detail || 'The properties could not be compared.');
+      if (!Array.isArray(payload?.items) || payload.items.length !== ids.length) {
+        throw new Error('The comparison response was incomplete.');
+      }
+
+      const table = element('table');
+      const head = element('thead');
+      const header = element('tr');
+      header.appendChild(element('th', '', 'Details'));
+      payload.items.forEach(p => header.appendChild(element('th', '', p.title || 'Property')));
+      head.appendChild(header);
+      table.appendChild(head);
+
+      const tbody = element('tbody');
+      comparisonFields.forEach(([label, getter]) => {
+        const row = element('tr');
+        row.appendChild(element('th', '', label));
+        payload.items.forEach(p => row.appendChild(element('td', '', getter(p))));
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      comparison.appendChild(table);
+      compareStatus.textContent = `Successfully comparing ${payload.count} saved properties.`;
+    } catch (error) {
+      compareStatus.textContent = error.message || 'Comparison failed.';
+    } finally {
+      updateCompareButton();
+    }
+  }
+
+  [searchInput, availabilityFilter, sortSelect].forEach(control => {
+    control.addEventListener('input', applyFilters);
+    control.addEventListener('change', applyFilters);
+  });
+
+  compareButton.addEventListener('click', compareSelected);
+  loadShortlist();
+})();
+</script>
+
+<script id="buyer-logout-shared-script">
+(() => {
+  const button = document.getElementById("buyerLogoutButton");
+  if (!button || button.dataset.logoutReady) return;
+  button.dataset.logoutReady = "true";
+
+  button.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to log out?")) return;
+
+    button.disabled = true;
+    button.querySelector("span:last-child").textContent = "Logging out...";
+
+    try {
+      const response = await fetch("/api/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"Accept": "application/json"}
+      });
+      if (!response.ok) throw new Error("Logout failed");
+      location.replace("/buyer/login");
+    } catch (error) {
+      button.disabled = false;
+      button.querySelector("span:last-child").textContent = "Log out";
+      alert("Unable to log out. Please try again.");
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
