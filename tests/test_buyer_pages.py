@@ -1,4 +1,4 @@
-from tests.test_buyer_profile import login_with_otp
+﻿from tests.test_buyer_profile import login_with_otp
 from backend.app.database import SessionLocal
 from backend.app.models import BuyerEnquiry, PropertyListing
 
@@ -7,7 +7,7 @@ def test_buyer_pages_redirect_unauthenticated_users(client):
     for path in ("/buyer", "/buyer/onboarding", "/buyer/dashboard"):
         response = client.get(path, follow_redirects=False)
         assert response.status_code == 303
-        assert response.headers["location"] == "/index.html?next=/buyer#login"
+        assert response.headers["location"] == "/buyer/login"
 
 
 def test_new_buyer_is_sent_to_onboarding(client):
@@ -58,9 +58,9 @@ def test_buyer_cannot_open_staff_dashboard(client):
     assert response.status_code == 403
 
 def test_login_page_preserves_destination_without_buyer_role_option(client):
-    response = client.get("/index.html?next=/buyer#login")
+    response = client.get("/buyer/login")
     assert response.status_code == 200
-    assert 'href="/login.html"' in response.text
+    assert "Sign in to your account" in response.text
     assert 'id="loginForm"' not in response.text
 
     login_response = client.get("/login.html?next=/buyer")
@@ -175,12 +175,12 @@ def test_selected_property_is_preserved_through_buyer_login(client):
     response = client.get("/buyer?property_id=42", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == (
-        "/index.html?next=/buyer&property_id=42#login"
+        "/buyer/login?property_id=42&next=%2Fproperty%2F42"
     )
 
     invalid = client.get("/buyer?property_id=../bad", follow_redirects=False)
     assert invalid.status_code == 303
-    assert invalid.headers["location"] == "/index.html?next=/buyer#login"
+    assert invalid.headers["location"] == "/buyer/login"
 
 
 def test_selected_property_survives_new_buyer_onboarding_redirect(client):
