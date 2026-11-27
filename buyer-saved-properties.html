@@ -55,6 +55,16 @@
     #selectionCount{grid-column:1/-1}
     .property{transition:border-color .18s,box-shadow .18s}
     .property:focus-within{border-color:var(--brass)}
+    .shortlist-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:18px 0 24px}
+    .stat-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:17px 19px;display:grid;gap:6px}
+    .stat-label{font:10px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--slate)}
+    .stat-card strong{font:600 27px Fraunces,serif;color:var(--ink)}
+    .stat-note{font-size:11px;color:var(--slate)}
+    .compare-actions{display:flex;gap:9px;flex-wrap:wrap}
+    .comparison-different th,.comparison-different td{background:#fbf5e9}
+    .comparison-different th:first-child{color:#805b25}
+    #clearFilters{justify-self:start}
+    @media(max-width:520px){.shortlist-stats{grid-template-columns:1fr}.stat-card{padding:13px 16px}}
     .compare-panel{scroll-margin-top:24px}
     .compare-panel table th:first-child{position:sticky;left:0;z-index:1}
     .compare-panel td{min-width:150px}
@@ -118,6 +128,25 @@
     </div>
 
     <p class="message" id="status" role="status" aria-live="polite"></p>
+
+    <section class="shortlist-stats" aria-label="Shortlist summary">
+      <article class="stat-card">
+        <span class="stat-label">TOTAL SAVED</span>
+        <strong id="totalSaved">0</strong>
+        <span class="stat-note">Properties in your shortlist</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">AVAILABLE</span>
+        <strong id="availableSaved">0</strong>
+        <span class="stat-note">Currently marked available</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">SELECTED</span>
+        <strong id="selectedSaved">0 / 4</strong>
+        <span class="stat-note">Properties for comparison</span>
+      </article>
+    </section>
+
     <section class="saved-controls" aria-label="Shortlist filters">
       <input id="savedSearch" type="search" placeholder="Search by property, city or type" aria-label="Search saved properties">
       <select id="savedAvailability" aria-label="Filter by availability">
@@ -133,13 +162,17 @@
         <option value="name">Name: A to Z</option>
       </select>
       <span class="muted" id="selectionCount">0 selected for comparison</span>
+      <button class="button" type="button" id="clearFilters">Clear filters</button>
     </section>
     <div class="grid" id="properties"></div>
 
     <section class="compare-panel">
       <h2>Compare properties</h2>
       <p class="muted">Choose between two and four properties from your shortlist.</p>
-      <button class="button primary" id="compare" disabled>Compare selected</button>
+      <div class="compare-actions">
+        <button class="button primary" id="compare" disabled>Compare selected</button>
+        <button class="button" type="button" id="clearSelection" disabled>Clear selection</button>
+      </div>
       <p class="message" id="compareStatus" role="status" aria-live="polite"></p>
       <div class="table-wrap" id="comparison"></div>
     </section>
@@ -158,6 +191,11 @@
   const availabilityFilter = document.getElementById('savedAvailability');
   const sortSelect = document.getElementById('savedSort');
   const selectionCount = document.getElementById('selectionCount');
+  const totalSaved = document.getElementById('totalSaved');
+  const availableSaved = document.getElementById('availableSaved');
+  const selectedSaved = document.getElementById('selectedSaved');
+  const clearFiltersButton = document.getElementById('clearFilters');
+  const clearSelectionButton = document.getElementById('clearSelection');
   const selected = new Set();
   let records = [];
 
@@ -176,8 +214,14 @@
 
   function updateCompareButton() {
     compareButton.disabled = selected.size < 2 || selected.size > 4;
+    clearSelectionButton.disabled = selected.size === 0;
     compareButton.textContent = `Compare selected (${selected.size}/4)`;
     selectionCount.textContent = `${selected.size} selected for comparison${selected.size === 1 ? ' ? select one more' : selected.size >= 2 ? ' ? ready to compare' : ''}`;
+    totalSaved.textContent = String(records.length);
+    availableSaved.textContent = String(records.filter(record =>
+      String(record?.property?.availability_status || '').toLowerCase() === 'available'
+    ).length);
+    selectedSaved.textContent = `${selected.size} / 4`;
   }
 
   function applyFilters() {
@@ -384,8 +428,10 @@
       const tbody = element('tbody');
       comparisonFields.forEach(([label, getter]) => {
         const row = element('tr');
+        const values = payload.items.map(getter);
+        if (new Set(values).size > 1) row.classList.add('comparison-different');
         row.appendChild(element('th', '', label));
-        payload.items.forEach(p => row.appendChild(element('td', '', getter(p))));
+        values.forEach(value => row.appendChild(element('td', '', value)));
         tbody.appendChild(row);
       });
       table.appendChild(tbody);
@@ -401,6 +447,21 @@
   [searchInput, availabilityFilter, sortSelect].forEach(control => {
     control.addEventListener('input', applyFilters);
     control.addEventListener('change', applyFilters);
+  });
+
+  clearFiltersButton.addEventListener('click', () => {
+    searchInput.value = '';
+    availabilityFilter.value = '';
+    sortSelect.value = 'default';
+    applyFilters();
+    searchInput.focus();
+  });
+
+  clearSelectionButton.addEventListener('click', () => {
+    selected.clear();
+    comparison.replaceChildren();
+    compareStatus.textContent = 'Comparison selection cleared. Your saved properties are unchanged.';
+    applyFilters();
   });
 
   compareButton.addEventListener('click', compareSelected);
