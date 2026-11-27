@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Buying Journey | RealIQ</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/realiq-luxury-theme.css">
+<style>
+:root{color-scheme:light;--forest:#17352e;--forest2:#24483e;--gold:#b99a65;--paper:#f5f3ed;--muted:#738078;--line:#e7e3d9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:#1b302b;font-family:Inter,Arial,sans-serif}
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+aside{background:#102b27;color:#fff;padding:28px 18px;display:flex;flex-direction:column}
+.logo{display:block;color:#fff;text-decoration:none;padding:0 12px 30px;font:600 25px Fraunces,serif}
+.nav-label{font:10px 'IBM Plex Mono',monospace;color:#c5c9bd;letter-spacing:.14em;text-transform:uppercase;padding:12px}
+nav{display:grid;gap:5px}
+nav a{padding:12px;color:#e3e8eb;text-decoration:none;font-size:13px;border-left:2px solid transparent;transition:.2s}
+nav a:hover,nav a.active{border-left-color:var(--gold);background:#ffffff12;color:#e2c58f}
+.buyer-sidebar-logout{margin:auto 14px 18px;padding-top:18px;border-top:1px solid #ffffff24}
+.buyer-logout-button{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;border:1px solid #ffffff2b;border-radius:10px;background:#ffffff0c;color:#f0e8dc;font:600 13px Inter,sans-serif;cursor:pointer}
+.buyer-logout-button:hover{background:#ffffff18}.buyer-logout-button:disabled{opacity:.6;cursor:wait}
+main{padding:38px clamp(20px,5vw,68px) 70px;min-width:0;max-width:1600px;width:100%}
+.crumb{font:10px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#78857d}
+.hero{position:relative;overflow:hidden;margin-top:22px;padding:clamp(26px,4vw,48px);border-radius:16px;background:linear-gradient(105deg,rgba(13,39,33,.97),rgba(22,57,48,.88) 62%,rgba(22,57,48,.5)),url('https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1800&q=85') center/cover;color:white;min-height:240px;display:flex;align-items:center}
+.hero:after{content:"";position:absolute;width:260px;height:260px;border:1px solid #d7bd8b35;border-radius:50%;right:8%;top:-100px;box-shadow:0 0 0 28px #d7bd8b0c,0 0 0 58px #d7bd8b08}
+.hero-content{position:relative;z-index:1;max-width:700px}
+.eyebrow{font:10px 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#d8bd8a}
+h1{font:500 clamp(34px,4.3vw,54px) Fraunces,serif;line-height:1.08;margin:14px 0 12px;letter-spacing:-.02em}
+.hero p{color:#e0e7df;line-height:1.75;font-size:14px;max-width:590px;margin:0}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border:1px solid #d8d4c9;background:#fff;color:#17332d;text-decoration:none;cursor:pointer;font:600 12px Inter,sans-serif;border-radius:5px;transition:.2s}
+.btn:hover{transform:translateY(-1px);border-color:var(--gold)}
+.btn.primary{background:#c5a675;border-color:#c5a675;color:#172b27}
+.btn.dark{background:#183b32;border-color:#183b32;color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 34px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:11px;padding:18px 20px;display:flex;align-items:center;gap:14px}
+.stat-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:#f2eee4;color:#7c6847;font-size:19px;flex:none}
+.stat strong{display:block;font:600 25px Fraunces,serif;color:#1b352e}
+.stat span:last-child{font-size:11px;color:var(--muted);display:block;margin-top:3px}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:34px 0 16px}
+.section-kicker{font:10px 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;color:#9a8055}
+h2{font:500 clamp(23px,2.5vw,30px) Fraunces,serif;margin:6px 0 5px;color:#1b352e}
+.section-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+.progress-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:24px}
+.progress-top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+.progress-top strong{font:500 20px Fraunces,serif}
+.progress-label{font-size:11px;color:#7c6847;background:#f5f0e6;padding:8px 11px;border-radius:30px}
+.timeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:relative;gap:8px}
+.timeline:before{content:"";position:absolute;top:17px;left:8%;right:8%;height:2px;background:#e9e5dc}
+.milestone{position:relative;z-index:1;min-width:0}
+.mile-dot{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#f1efe9;border:1px solid #e3dfd5;color:#8b918a;font-size:13px;margin-bottom:12px}
+.milestone.done .mile-dot{background:#24483e;border-color:#24483e;color:#fff}
+.milestone.current .mile-dot{background:#f4ead8;border:2px solid var(--gold);color:#765d36;box-shadow:0 0 0 5px #c5a67520}
+.milestone b{display:block;font-size:11px;line-height:1.4;color:#31463e}
+.milestone small{display:block;font-size:10px;color:#89938c;margin-top:5px;line-height:1.45}
+.milestone.current b{color:#896b3e}
+.next-card{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:16px;padding:18px 20px;border-radius:11px;background:#edf1eb;border:1px solid #dce5da}
+.next-card .next-copy{min-width:0}.next-card small{font:10px 'IBM Plex Mono',monospace;color:#758478;letter-spacing:.12em;text-transform:uppercase}
+.next-card strong{display:block;font:500 19px Fraunces,serif;margin:5px 0;color:#234237}
+.next-card p{font-size:12px;color:#66776c;margin:0;line-height:1.55}
+.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:20px}
+.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.item{border:1px solid #e9e6de;border-radius:11px;overflow:hidden;background:#fff;min-width:0}
+.item-body{padding:17px}
+.item h3{font:500 20px Fraunces,serif;margin:0 0 7px;color:#213a32}
+.item p{color:#758078;font-size:12px;line-height:1.65;margin:6px 0}
+.item-meta{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+.meta-chip{background:#f4f2ec;color:#647168;border-radius:4px;padding:6px 8px;font-size:10px}
+.item-price{font:500 17px Fraunces,serif;color:#8a7048;margin-top:10px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:30px;padding:6px 9px;background:#f3f0e7;color:#75613e;font-size:10px;font-weight:600;text-transform:capitalize}
+.status-pill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.status-pill.confirmed,.status-pill.completed{background:#eaf2ec;color:#3c7654}
+.status-pill.cancelled,.status-pill.rejected{background:#f8ece9;color:#a65d50}
+.status-pill.requested,.status-pill.pending{background:#f7f0e2;color:#98743d}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.status{padding:10px 0;color:#78847d;font-size:12px}
+.empty{padding:26px 20px;background:#faf9f6;border:1px dashed #ddd8cb;border-radius:10px;color:#748078;text-align:center;font-size:12px;line-height:1.7}
+.empty strong{display:block;color:#344a40;font:500 19px Fraunces,serif;margin-bottom:5px}
+.future-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.future{padding:17px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.future .future-icon{font-size:19px;margin-bottom:12px}
+.future strong{display:block;font:500 17px Fraunces,serif;color:#30483e}
+.future p{font-size:11px;line-height:1.6;color:#78847d;margin:6px 0 0}
+.future span{display:inline-block;margin-top:12px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8a795c}
+.footer-note{margin-top:28px;padding:16px 18px;border-left:2px solid var(--gold);background:#f0ede5;color:#788078;font-size:11px;line-height:1.7}
+@media(max-width:900px){.shell{grid-template-columns:205px minmax(0,1fr)}main{padding-left:24px;padding-right:24px}.list{grid-template-columns:1fr}}
+@media(max-width:700px){.shell{grid-template-columns:1fr}aside{padding:14px 14px 10px}.logo{padding:0 8px 12px}.nav-label{display:none}nav{grid-template-columns:repeat(2,minmax(0,1fr))}nav a{padding:9px;font-size:12px} .buyer-sidebar-logout{margin:10px 4px 2px;padding-top:10px}.buyer-logout-button{padding:10px 12px}main{padding:23px 16px 48px}.hero{min-height:230px;padding:25px 21px}.stats{gap:8px}.stat{padding:12px 10px;gap:8px}.stat-icon{width:32px;height:32px;font-size:15px}.stat strong{font-size:21px}.stat span:last-child{font-size:9px}.progress-card{padding:17px 13px}.timeline{gap:3px}.timeline:before{left:8%;right:8%}.mile-dot{width:29px;height:29px;font-size:11px;margin-bottom:9px}.milestone b{font-size:9px}.milestone small{font-size:8px}.next-card{align-items:flex-start;flex-direction:column}.future-grid{grid-template-columns:1fr}}
+@media(max-width:390px){.timeline{grid-template-columns:repeat(5,minmax(0,1fr))}.milestone b{font-size:8px}.milestone small{font-size:7px}.stats{grid-template-columns:1fr}.stat{padding:11px 14px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside>
+<a class="logo" href="/">RealIQ</a>
+<div class="nav-label">Buyer workspace</div>
+<nav aria-label="Buyer navigation">
+<a href="/buyer/dashboard">Overview</a>
+<a href="/buyer/discover">Discover property</a>
+<a href="/inventory">Live inventory</a>
+<a class="active" href="/buyer/journey">My buying journey</a>
+<a href="/buyer-saved-properties.html">Saved properties</a>
+<a href="/buyer/profile">My profile</a>
+</nav>
+<div class="buyer-sidebar-logout">
+<button type="button" class="buyer-logout-button" id="buyerLogoutButton">
+<span aria-hidden="true">?</span><span>Log out</span>
+</button>
+</div>
+</aside>
+
+<main>
+<div class="crumb">RealIQ / Buyer OS / My journey</div>
+<section class="hero">
+<div class="hero-content">
+<div class="eyebrow">A clearer way home</div>
+<h1>Your home-buying journey,<br>all in one place.</h1>
+<p>From the first property you save to the day you receive your keys, keep track of the important steps and what comes next.</p>
+<div class="hero-actions">
+<a class="btn primary" href="/inventory">Explore properties <span aria-hidden="true">?</span></a>
+<a class="btn" href="/buyer-saved-properties.html">View saved homes</a>
+</div>
+</div>
+</section>
+
+<section class="stats" aria-label="Journey summary">
+<div class="stat"><div class="stat-icon" aria-hidden="true">?</div><div><strong id="savedCount">?</strong><span>Saved properties</span></div></div>
+<div class="stat"><div class="stat-icon" aria-hidden="true">?</div><div><strong id="visitCount">?</strong><span>Site visits</span></div></div>
+<div class="stat"><div class="stat-icon" aria-hidden="true">?</div><div><strong id="completedCount">1</strong><span>Journey stages reached</span></div></div>
+</section>
+
+<div class="section-head">
+<div><div class="section-kicker">Your progress</div><h2>The journey so far</h2><p>Your milestones update as your saved properties and site visits change.</p></div>
+</div>
+<section class="progress-card">
+<div class="progress-top"><strong id="progressTitle">Your journey is getting started</strong><span class="progress-label" id="progressLabel">Profile stage</span></div>
+<div class="timeline" id="timeline">
+<div class="milestone done"><div class="mile-dot">?</div><b>Get started</b><small>Profile set up</small></div>
+<div class="milestone"><div class="mile-dot">2</div><b>Discover</b><small>Save homes</small></div>
+<div class="milestone"><div class="mile-dot">3</div><b>Visit</b><small>See properties</small></div>
+<div class="milestone"><div class="mile-dot">4</div><b>Book</b><small>Booking steps</small></div>
+<div class="milestone"><div class="mile-dot">5</div><b>Move in</b><small>Your new chapter</small></div>
+</div>
+<div class="next-card">
+<div class="next-copy"><small>Your next step</small><strong id="nextTitle">Discover homes that feel right</strong><p id="nextDescription">Explore available properties and save the ones you would like to consider.</p></div>
+<a class="btn dark" id="nextAction" href="/inventory">Explore homes ?</a>
+</div>
+</section>
+
+<div class="section-head">
+<div><div class="section-kicker">Shortlist</div><h2>Your saved properties</h2><p>Keep your favourite homes close while you compare your options.</p></div>
+<a class="btn" href="/buyer-saved-properties.html">Manage shortlist ?</a>
+</div>
+<section class="panel">
+<p class="status" id="shortStatus" role="status">Loading your saved properties...</p>
+<div class="list" id="shortList"></div>
+</section>
+
+<div class="section-head">
+<div><div class="section-kicker">Appointments</div><h2>Your site visits</h2><p>Follow each visit request and check its latest status.</p></div>
+<a class="btn primary" href="/inventory">Find a property to visit ?</a>
+</div>
+<section class="panel">
+<p class="status" id="visitStatus" role="status">Loading your site visits...</p>
+<div class="list" id="visitList"></div>
+</section>
+
+<div class="section-head">
+<div><div class="section-kicker">What comes next</div><h2>Beyond the visits</h2><p>These stages become relevant when you move forward with a property.</p></div>
+</div>
+<section class="future-grid">
+<article class="future"><div class="future-icon">?</div><strong>Booking &amp; confirmation</strong><p>Review the booking details and confirmation once a booking is created.</p><span>Not started</span></article>
+<article class="future"><div class="future-icon">?</div><strong>Documents &amp; payments</strong><p>Keep track of paperwork and payment milestones when they become available.</p><span>Not started</span></article>
+<article class="future"><div class="future-icon">?</div><strong>Handover &amp; move-in</strong><p>The final step: follow handover updates and prepare for your new home.</p><span>Not started</span></article>
+</section>
+<div class="footer-note">Your journey reflects the information currently available in your RealIQ account. Booking, payment and handover milestones will appear here when those records are available.</div>
+</main>
+</div>
+
+<script>
+(async()=>{
+ const shortStatus=document.getElementById('shortStatus');
+ const shortList=document.getElementById('shortList');
+ const visitStatus=document.getElementById('visitStatus');
+ const visitList=document.getElementById('visitList');
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const get=async url=>{const r=await fetch(url,{credentials:'same-origin',headers:{'Accept':'application/json'}});if(!r.ok)throw Error('Request failed ('+r.status+')');return r.json()};
+ const propertyName=p=>p?.title||p?.name||p?.project_name||('Property #'+(p?.id||''));
+ const locationOf=p=>[p?.locality,p?.city,p?.state].filter(Boolean).join(', ');
+ const money=v=>{if(v===null||v===undefined||v==='')return '';if(typeof v==='string'&&/[?,]/.test(v))return v;const n=Number(v);return Number.isFinite(n)?'?'+n.toLocaleString('en-IN'):' '};
+ const statusClass=s=>String(s||'pending').toLowerCase().replace(/[^a-z0-9_-]/g,'-');
+ let savedRows=[],visitRows=[];
+ const renderProgress=()=>{
+   const saved=savedRows.length,visits=visitRows.length;
+   const hasConfirmed=visitRows.some(v=>['confirmed','completed'].includes(String(v.status||'').toLowerCase()));
+   const stage=hasConfirmed?3:visits?2:saved?1:0;
+   const reached=stage+1;
+   document.getElementById('savedCount').textContent=saved;
+   document.getElementById('visitCount').textContent=visits;
+   document.getElementById('completedCount').textContent=reached;
+   const titles=['Your journey is getting started','You have started exploring','You are moving closer to a decision','Your property visits are underway'];
+   const labels=['Profile stage','Discover stage','Visit stage','Visit stage'];
+   document.getElementById('progressTitle').textContent=titles[stage];
+   document.getElementById('progressLabel').textContent=labels[stage];
+   const milestones=[...document.querySelectorAll('.milestone')];
+   milestones.forEach((el,i)=>{
+     el.classList.toggle('done',i<reached);
+     el.classList.toggle('current',i===reached);
+     const dot=el.querySelector('.mile-dot');
+     dot.textContent=i<reached?'?':String(i+1);
+   });
+   const next=[
+     ['Discover homes that feel right','Explore available properties and save the ones you would like to consider.','Explore homes','/inventory'],
+     ['Shortlist your favourites','Compare your saved properties and decide which ones deserve a closer look.','View shortlist','/buyer-saved-properties.html'],
+     ['Plan a property visit','You have saved homes. Request a site visit to experience a property in person.','Explore properties','/inventory'],
+     ['Review your next steps','Your visit activity is underway. Keep an eye on appointment updates as you evaluate your options.','View site visits','#']
+   ][stage];
+   document.getElementById('nextTitle').textContent=next[0];
+   document.getElementById('nextDescription').textContent=next[1];
+   const action=document.getElementById('nextAction');action.textContent=next[2]+' ?';action.href=next[3];
+ };
+ try{
+   const rows=await get('/api/buyer/shortlist');
+   savedRows=Array.isArray(rows)?rows:[];
+   shortStatus.textContent=savedRows.length?savedRows.length+' saved properties':'Your shortlist is empty.';
+   shortList.innerHTML=savedRows.map(x=>{
+     const p=x.property||x;
+     const loc=locationOf(p);
+     const price=money(p.price_inr??p.price??p.asking_price);
+     const details=[p.bedrooms?`${p.bedrooms} bedrooms`:null,p.property_type,p.area_sqft?`${Number(p.area_sqft).toLocaleString('en-IN')} sq.ft.`:null].filter(Boolean);
+     return `<article class="item"><div class="item-body"><h3>${esc(propertyName(p))}</h3>${loc?`<p>? ${esc(loc)}</p>`:''}${details.length?`<div class="item-meta">${details.map(d=>`<span class="meta-chip">${esc(d)}</span>`).join('')}</div>`:''}${price?`<div class="item-price">${esc(price)}</div>`:''}<div class="actions"><a class="btn" href="/buyer-saved-properties.html">View saved properties</a></div></div></article>`;
+   }).join('');
+   if(!savedRows.length)shortList.innerHTML='<div class="empty"><strong>Your shortlist starts here</strong>Save properties you like from live inventory and they will appear in this space.<div class="actions" style="justify-content:center"><a class="btn primary" href="/inventory">Explore live inventory</a></div></div>';
+ }catch(e){shortStatus.textContent='Could not load your saved properties. Please refresh to try again.';shortList.innerHTML='<div class="empty">Your saved properties could not be loaded right now.</div>'}
+ const loadVisits=async()=>{
+   try{
+     const rows=await get('/api/buyer/site-visits');
+     visitRows=Array.isArray(rows)?rows:[];
+     visitStatus.textContent=visitRows.length?visitRows.length+' site visits':'No site visits requested yet.';
+     visitList.innerHTML=visitRows.map(v=>{
+       const p=v.property||{};
+       const date=v.scheduled_at?new Date(v.scheduled_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Schedule not provided';
+       const status=String(v.status||'pending');
+       const canCancel=['requested','confirmed'].includes(status.toLowerCase());
+       const loc=locationOf(p);
+       return `<article class="item"><div class="item-body"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><span class="status-pill ${statusClass(status)}">${esc(status)}</span><span class="meta-chip">Visit #${esc(v.id)}</span></div><h3>${esc(propertyName(p)||('Property #'+v.property_listing_id))}</h3>${loc?`<p>? ${esc(loc)}</p>`:''}<div class="item-meta"><span class="meta-chip">? ${esc(date)}</span></div>${v.message?`<p>${esc(v.message)}</p>`:''}${canCancel?`<div class="actions"><button class="btn" data-cancel="${Number(v.id)}">Cancel visit</button></div>`:''}</div></article>`;
+     }).join('');
+     if(!visitRows.length)visitList.innerHTML='<div class="empty"><strong>No visits scheduled yet</strong>When you request a site visit, appointment details and status updates will appear here.<div class="actions" style="justify-content:center"><a class="btn primary" href="/inventory">Find a property to visit</a></div></div>';
+     visitList.querySelectorAll('[data-cancel]').forEach(b=>b.addEventListener('click',async()=>{
+       if(!confirm('Cancel this site visit?'))return;
+       b.disabled=true;b.textContent='Cancelling...';
+       try{const r=await fetch('/api/buyer/site-visits/'+b.dataset.cancel+'/cancel',{method:'PATCH',credentials:'same-origin'});if(!r.ok)throw Error();await loadVisits()}
+       catch(e){b.disabled=false;b.textContent='Cancel visit';alert('Unable to cancel this visit. Please refresh and try again.')}
+     }));
+   }catch(e){visitStatus.textContent='Could not load your site visits. Please refresh to try again.';visitList.innerHTML='<div class="empty">Your site visits could not be loaded right now.</div>'}
+   renderProgress();
+ };
+ await loadVisits();
+ renderProgress();
+})();
+</script>
+<script id="buyer-logout-shared-script">
+(()=>{
+ const button=document.getElementById("buyerLogoutButton");
+ if(!button||button.dataset.logoutReady)return;
+ button.dataset.logoutReady="true";
+ button.addEventListener("click",async()=>{
+   if(!confirm("Are you sure you want to log out?"))return;
+   button.disabled=true;
+   button.querySelector("span:last-child").textContent="Logging out...";
+   try{
+     const response=await fetch("/api/logout",{method:"POST",credentials:"same-origin",headers:{"Accept":"application/json"}});
+     if(!response.ok)throw new Error("Logout failed");
+     location.replace("/buyer/login");
+   }catch(error){
+     button.disabled=false;
+     button.querySelector("span:last-child").textContent="Log out";
+     alert("Unable to log out. Please try again.");
+   }
+ });
+})();
+</script>
+</body>
+</html>
