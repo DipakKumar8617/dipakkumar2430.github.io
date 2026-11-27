@@ -232,6 +232,16 @@ def buyer_dashboard_page(request: Request, db: Session = Depends(get_db)):
     return FileResponse(PROJECT_ROOT / "buyer-dashboard.html")
 
 
+@app.get("/buyer/journey")
+def buyer_journey_page(request: Request, db: Session = Depends(get_db)):
+    if not isinstance(request.session.get("user"), dict):
+        return _buyer_login_redirect(request)
+    account, _provider, _subject = authenticated_account(request, db)
+    if not find_profile(db, account.id):
+        return RedirectResponse("/buyer/onboarding" + _buyer_property_suffix(request), status_code=303)
+    return FileResponse(PROJECT_ROOT / "buyer-journey.html")
+
+
 @app.get("/inventory")
 def inventory_page():
     return FileResponse(PROJECT_ROOT / "inventory.html")
@@ -324,6 +334,11 @@ def favicon_svg():
 @app.get("/styles.css")
 def stylesheet():
     return FileResponse(PROJECT_ROOT / "styles.css", media_type="text/css")
+
+
+@app.get("/realiq-luxury-theme.css")
+def realiq_luxury_theme():
+    return FileResponse(PROJECT_ROOT / "realiq-luxury-theme.css", media_type="text/css")
 
 
 @app.get("/api/auth/config")

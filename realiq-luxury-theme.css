@@ -1,0 +1,1510 @@
+/* RealIQ shared luxury theme ? buyer pages */
+:root {
+  --navy-950: #24352b;
+  --navy-900: #304638;
+  --navy-800: #3b5142;
+  --navy-700: #526957;
+  --paper: #f7f6f1;
+  --paper-dim: #eeece5;
+  --brass: #ad8950;
+  --brass-light: #c5a875;
+  --emerald: #405c48;
+  --slate: #77796f;
+  --ink: #242820;
+  --white: #fffefa;
+  --line: rgba(45, 48, 40, .13);
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+h1, h2, h3 {
+  color: var(--ink);
+  font-family: Fraunces, Georgia, serif;
+}
+
+input, select, textarea {
+  accent-color: var(--brass);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline-color: var(--brass);
+}
+
+button, .button, .primary, .submit-btn {
+  transition: background-color .2s ease, border-color .2s ease,
+              color .2s ease, transform .2s ease;
+}
+
+.buyer-nav,
+.sidebar,
+.shell > aside {
+  background: var(--navy-950);
+  color: var(--white);
+}
+
+.buyer-nav .logo,
+.sidebar .logo,
+.shell > aside .logo {
+  color: var(--white);
+}
+
+.nav-label,
+.side-label {
+  color: #c5cbbf;
+}
+
+.side-nav a,
+.shell aside nav a {
+  color: #e8ebe5;
+  border-left-color: transparent;
+}
+
+.side-nav a.active,
+.shell aside nav a.active {
+  color: #e1c38e;
+  border-left-color: var(--brass);
+  background: rgba(255,255,255,.08);
+}
+
+.side-nav a:hover,
+.shell aside nav a:hover {
+  background: rgba(255,255,255,.07);
+}
+
+.wrap,
+.main,
+.enquiry-section {
+  color: var(--ink);
+}
+
+.form-card,
+.enquiry-card,
+.tile,
+.saved-searches-panel,
+.recently-viewed-section,
+.saved-search-card,
+.recently-viewed-card,
+.buyer-shortlist-section,
+.shortlist-card,
+.property,
+.compare-panel,
+.empty {
+  background: var(--white);
+  border-color: var(--line);
+  box-shadow: 0 12px 30px rgba(36, 53, 43, .055);
+}
+
+.profile-banner,
+.selected-property-panel {
+  background: var(--navy-900);
+  color: var(--white);
+  border-radius: 5px;
+}
+
+.profile-banner p,
+.selected-property-panel p {
+  color: rgba(255,255,255,.78);
+}
+
+.edit-link {
+  color: #e1c38e;
+  border-color: var(--brass);
+}
+
+.primary,
+.button.primary,
+.submit-btn {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #fffefa;
+}
+
+.primary:hover:not(:disabled),
+.button.primary:hover:not(:disabled),
+.submit-btn:hover {
+  background: #967443;
+  border-color: #967443;
+}
+
+.type-card,
+.tile,
+.property,
+.shortlist-card,
+.saved-search-card,
+.recently-viewed-card {
+  border-radius: 5px;
+}
+
+.type-option input:checked + .type-card {
+  border-color: var(--brass);
+  background: #f7f4eb;
+}
+
+.field input,
+.field select,
+.enquiry-field input,
+.enquiry-field select,
+.enquiry-field textarea {
+  border-color: var(--line);
+  background: #fffefa;
+  color: var(--ink);
+  border-radius: 3px;
+}
+
+.field input:focus,
+.field select:focus,
+.enquiry-field input:focus,
+.enquiry-field select:focus,
+.enquiry-field textarea:focus {
+  outline: 2px solid rgba(173,137,80,.45);
+  outline-offset: 1px;
+}
+
+.eyebrow,
+.crumb,
+.breadcrumb {
+  color: var(--emerald);
+}
+
+.tile-label,
+.muted,
+.lead,
+.help,
+.intro {
+  color: var(--slate);
+}
+
+th {
+  background: #f1efe8;
+  color: var(--ink);
+}
+
+th, td {
+  border-color: var(--line);
+}
+
+.status-pill,
+.shortlist-availability {
+  background: #eeece5;
+  color: var(--navy-950);
+}
+
+@media (max-width: 700px) {
+  .buyer-nav {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+}
+
+/* REALIQ BUYER EXPERIENCE UPGRADE */
+
+/* Buyer onboarding */
+.buyer-nav {
+  min-height: 76px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  box-shadow: 0 4px 24px rgba(24, 39, 29, .08);
+}
+
+.buyer-nav .logo,
+.sidebar .logo {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 25px;
+  letter-spacing: -.04em;
+}
+
+.buyer-nav .mark,
+.sidebar .mark {
+  color: var(--brass-light);
+}
+
+.buyer-nav + .wrap {
+  max-width: 900px;
+  margin-top: 62px;
+  padding-bottom: 80px;
+}
+
+.buyer-nav + .wrap > .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(173, 137, 80, .28);
+  border-radius: 999px;
+  background: rgba(173, 137, 80, .07);
+  font-size: 10px;
+}
+
+.buyer-nav + .wrap h1 {
+  max-width: 720px;
+  margin: 18px 0 14px;
+  font-size: clamp(40px, 6vw, 62px);
+  font-weight: 400;
+  letter-spacing: -.045em;
+  line-height: 1.04;
+}
+
+.buyer-nav + .wrap .intro {
+  max-width: 650px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.buyer-nav + .wrap .form-card {
+  margin-top: 38px;
+  padding: clamp(24px, 5vw, 46px);
+  border: 1px solid rgba(45, 48, 40, .10);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 24px 70px rgba(36, 53, 43, .09);
+}
+
+.buyer-nav + .wrap fieldset {
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.buyer-nav + .wrap legend {
+  margin-bottom: 17px;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.buyer-nav + .wrap .type-grid {
+  gap: 16px;
+}
+
+.buyer-nav + .wrap .type-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 126px;
+  padding: 23px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffefa;
+  transition: border-color .2s ease, background .2s ease,
+              box-shadow .2s ease, transform .2s ease;
+}
+
+.buyer-nav + .wrap .type-card strong {
+  color: var(--navy-950);
+  font-family: Fraunces, Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.buyer-nav + .wrap .type-card span {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.buyer-nav + .wrap .type-option:hover .type-card {
+  border-color: rgba(173, 137, 80, .65);
+  transform: translateY(-2px);
+}
+
+.buyer-nav + .wrap .type-option input:checked + .type-card {
+  padding: 22px;
+  border: 2px solid var(--brass);
+  background: #f8f5ed;
+  box-shadow: 0 8px 22px rgba(173, 137, 80, .12);
+}
+
+.buyer-nav + .wrap .fields {
+  row-gap: 23px;
+  column-gap: 20px;
+  margin-top: 28px;
+}
+
+.buyer-nav + .wrap .field label {
+  margin-bottom: 9px;
+  color: #55594f;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .09em;
+}
+
+.buyer-nav + .wrap .field input,
+.buyer-nav + .wrap .field select {
+  min-height: 54px;
+  padding: 14px 15px;
+  border: 1px solid #deddd4;
+  border-radius: 8px;
+  background: #fbfaf6;
+  font-size: 14px;
+  transition: border-color .2s ease, box-shadow .2s ease,
+              background .2s ease;
+}
+
+.buyer-nav + .wrap .field input:hover,
+.buyer-nav + .wrap .field select:hover {
+  border-color: #b8a783;
+}
+
+.buyer-nav + .wrap .field input:focus,
+.buyer-nav + .wrap .field select:focus {
+  border-color: var(--brass);
+  outline: none;
+  background: #fffefa;
+  box-shadow: 0 0 0 4px rgba(173, 137, 80, .12);
+}
+
+.buyer-nav + .wrap .help {
+  font-size: 12px;
+}
+
+.buyer-nav + .wrap .form-actions {
+  margin-top: 34px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.buyer-nav + .wrap .primary {
+  min-height: 52px;
+  padding: 15px 24px;
+  border-radius: 7px;
+  font-size: 13px;
+  letter-spacing: .01em;
+  box-shadow: 0 8px 20px rgba(36, 53, 43, .13);
+}
+
+.buyer-nav + .wrap .primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(36, 53, 43, .18);
+}
+
+.buyer-nav + .wrap .back-link {
+  color: var(--slate);
+  text-decoration: none;
+}
+
+.buyer-nav + .wrap .back-link:hover {
+  color: var(--navy-950);
+  text-decoration: underline;
+}
+
+.buyer-nav + .wrap .selected-property-panel {
+  border: 1px solid rgba(197, 168, 117, .25);
+  border-radius: 12px;
+  box-shadow: 0 16px 35px rgba(36, 53, 43, .12);
+}
+
+/* Buyer dashboard */
+.layout .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-height: 620px;
+  padding: 34px 20px 24px;
+  background: linear-gradient(165deg, #24352b 0%, #1d2d24 100%);
+  box-shadow: 8px 0 30px rgba(24, 39, 29, .07);
+}
+
+.layout .sidebar .logo {
+  padding: 0 12px 34px;
+}
+
+.layout .side-label {
+  padding-top: 22px;
+  color: #c5b895;
+  font-size: 9px;
+}
+
+.layout .side-nav {
+  gap: 7px;
+}
+
+.layout .side-nav a {
+  padding: 13px 14px;
+  border-left: 2px solid transparent;
+  border-radius: 0 7px 7px 0;
+  color: #e6e9e2;
+  font-size: 12px;
+  transition: background .2s ease, color .2s ease;
+}
+
+.layout .side-nav a.active {
+  border-left-color: var(--brass-light);
+  background: rgba(255, 255, 255, .10);
+  color: #e8cf9f;
+}
+
+.layout .side-nav a:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.layout .side-bottom {
+  color: #bdc7bb;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.layout .main {
+  max-width: 1600px;
+  padding: 38px clamp(22px, 4vw, 64px) 76px;
+}
+
+.layout .topbar {
+  margin-bottom: 46px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--line);
+}
+
+.layout .breadcrumb {
+  color: #858579;
+  font-size: 9px;
+}
+
+.layout .user-chip {
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--navy-950);
+  font-size: 11px;
+}
+
+.layout .main > .eyebrow {
+  font-size: 10px;
+}
+
+.layout .main > h1 {
+  margin-top: 14px;
+  font-size: clamp(40px, 5vw, 58px);
+  font-weight: 400;
+  letter-spacing: -.045em;
+}
+
+.layout .lead {
+  max-width: 720px;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.layout .profile-banner {
+  margin: 34px 0 44px;
+  padding: 28px 30px;
+  border: 1px solid rgba(197, 168, 117, .22);
+  border-radius: 12px;
+  background: linear-gradient(115deg, #304638, #24352b);
+  box-shadow: 0 16px 35px rgba(36, 53, 43, .12);
+}
+
+.layout .profile-banner strong {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.layout .profile-banner p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.layout .edit-link {
+  padding: 12px 17px;
+  border-radius: 6px;
+  transition: background .2s ease, color .2s ease;
+}
+
+.layout .edit-link:hover {
+  background: var(--brass);
+  color: var(--navy-950);
+}
+
+.layout .section-head {
+  margin-top: 46px;
+  margin-bottom: 19px;
+}
+
+.layout .section-head h2 {
+  font-size: 29px;
+  font-weight: 500;
+  letter-spacing: -.025em;
+}
+
+.layout .section-head p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.layout .grid {
+  gap: 17px;
+}
+
+.layout .tile {
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(36, 53, 43, .045);
+  transition: transform .22s ease, box-shadow .22s ease,
+              border-color .22s ease;
+}
+
+.layout .tile::after {
+  position: absolute;
+  right: -28px;
+  bottom: -42px;
+  width: 110px;
+  height: 110px;
+  border: 1px solid rgba(173, 137, 80, .14);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.layout .tile:hover {
+  transform: translateY(-3px);
+  border-color: rgba(173, 137, 80, .45);
+  box-shadow: 0 16px 32px rgba(36, 53, 43, .09);
+}
+
+.layout .tile-label {
+  color: #9a8157;
+  font-size: 9px;
+  letter-spacing: .13em;
+}
+
+.layout .tile h3 {
+  margin: 18px 0 9px;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.layout .tile p {
+  max-width: 340px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.layout .tile .coming {
+  border-radius: 999px;
+  background: #f1eee5;
+  color: #78633e;
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+.layout .action-secondary,
+.layout .action-link {
+  border-radius: 6px;
+  transition: transform .2s ease, background .2s ease,
+              border-color .2s ease;
+}
+
+.layout .action-secondary:hover,
+.layout .action-link:hover {
+  transform: translateY(-1px);
+}
+
+.layout .journey {
+  gap: 12px;
+}
+
+.layout .journey-step {
+  min-height: 104px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-top: 3px solid #e5e1d7;
+  border-radius: 9px;
+  background: var(--white);
+}
+
+.layout .journey-step.current {
+  border-top-color: var(--brass);
+  background: #faf8f2;
+}
+
+.layout .journey-step span {
+  color: #9a8157;
+  font-size: 9px;
+  letter-spacing: .1em;
+}
+
+.layout .journey-step strong {
+  margin-top: 12px;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.layout .next-panel {
+  margin-top: 28px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(36, 53, 43, .05);
+}
+
+.layout .next-panel h3 {
+  font-size: 27px;
+  font-weight: 500;
+}
+
+.layout .next-panel p {
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.layout .recently-viewed-section,
+.layout .saved-searches-panel,
+.layout .buyer-shortlist-section,
+.layout .site-visits-section {
+  margin: 32px 0;
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 10px 28px rgba(36, 53, 43, .045);
+}
+
+.layout .recently-viewed-card,
+.layout .saved-search-card,
+.layout .shortlist-card,
+.layout .site-visit-card {
+  padding: 19px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fffefa;
+  transition: border-color .2s ease, box-shadow .2s ease,
+              transform .2s ease;
+}
+
+.layout .recently-viewed-card:hover,
+.layout .saved-search-card:hover,
+.layout .shortlist-card:hover,
+.layout .site-visit-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(173, 137, 80, .45);
+  box-shadow: 0 10px 22px rgba(36, 53, 43, .07);
+}
+
+.layout .recently-viewed-card p,
+.layout .saved-search-card p,
+.layout .shortlist-card p,
+.layout .site-visit-card p {
+  color: #77796f;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.layout .shortlist-availability,
+.layout .site-visit-status-pill {
+  border: 1px solid rgba(173, 137, 80, .25);
+  border-radius: 999px;
+  background: #f5f1e7;
+  color: #705a35;
+  font-size: 9px;
+  letter-spacing: .06em;
+}
+
+.layout .shortlist-comparison {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.layout .shortlist-comparison-result th {
+  background: #f3f0e8;
+}
+
+.layout .shortlist-comparison-result th,
+.layout .shortlist-comparison-result td {
+  padding: 13px;
+  border-color: var(--line);
+}
+
+.layout button {
+  border-radius: 6px;
+}
+
+.layout .status {
+  line-height: 1.7;
+}
+
+@media (max-width: 930px) {
+  .layout .sidebar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .layout .main {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (max-width: 650px) {
+  .buyer-nav + .wrap {
+    margin-top: 36px;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .buyer-nav + .wrap h1 {
+    font-size: clamp(38px, 11vw, 48px);
+  }
+
+  .buyer-nav + .wrap .form-card {
+    margin-top: 26px;
+    padding: 22px 18px;
+    border-radius: 12px;
+  }
+
+  .buyer-nav + .wrap .type-card {
+    min-height: 108px;
+  }
+
+  .buyer-nav + .wrap .form-actions {
+    align-items: stretch;
+  }
+
+  .layout .sidebar {
+    position: relative;
+    height: auto;
+    min-height: 0;
+  }
+
+  .layout .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .layout .main {
+    padding: 24px 17px 48px;
+  }
+
+  .layout .topbar {
+    margin-bottom: 30px;
+  }
+
+  .layout .main > h1 {
+    font-size: 40px;
+  }
+
+  .layout .profile-banner {
+    padding: 22px;
+  }
+
+  .layout .section-head h2 {
+    font-size: 25px;
+  }
+
+  .layout .recently-viewed-section,
+  .layout .saved-searches-panel,
+  .layout .buyer-shortlist-section,
+  .layout .site-visits-section {
+    padding: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout .tile,
+  .layout .recently-viewed-card,
+  .layout .saved-search-card,
+  .layout .shortlist-card,
+  .layout .site-visit-card,
+  .buyer-nav + .wrap .type-card {
+    transition: none;
+  }
+}
+
+/* REALIQ ONBOARDING FULLSCREEN DESIGN */
+body:has(.onboarding-layout) {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(9, 28, 23, .88) 0%, rgba(9, 28, 23, .68) 46%, rgba(9, 28, 23, .38) 100%),
+    url("/images/realiq-onboarding-bg.png") center 48% / cover fixed;
+  color: #f8f4e9;
+}
+
+.onboarding-nav {
+  min-height: 76px;
+  padding: 0 clamp(22px, 6vw, 90px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #102d25;
+  color: #fff;
+  border-bottom: 1px solid rgba(218, 190, 133, .25);
+  position: relative;
+  z-index: 2;
+}
+
+.onboarding-nav .logo {
+  color: #fff;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 25px;
+}
+
+.onboarding-nav .mark {
+  color: #d5b77c;
+}
+
+.onboarding-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font: 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .14em;
+}
+
+.onboarding-nav-right a {
+  color: #e1c995;
+  text-decoration: none;
+  letter-spacing: .04em;
+  border: 1px solid rgba(225, 201, 149, .55);
+  padding: 10px 17px;
+}
+
+.onboarding-layout {
+  width: min(1320px, 100%);
+  min-height: calc(100vh - 76px);
+  margin: 0 auto;
+  padding: 58px clamp(22px, 6vw, 90px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 520px);
+  align-items: center;
+  gap: clamp(40px, 7vw, 110px);
+}
+
+.onboarding-hero {
+  max-width: 590px;
+  padding: 20px 0;
+}
+
+.onboarding-kicker,
+.onboarding-hero-note,
+.onboarding-form-heading > span {
+  font: 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .19em;
+  color: #dfc28a;
+}
+
+.onboarding-hero h1 {
+  max-width: 600px;
+  margin: 24px 0;
+  color: #fffaf0;
+  font: 400 clamp(44px, 5.4vw, 76px)/1.08 'Fraunces', Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+.onboarding-hero h1 em {
+  color: #e1c48e;
+  font-weight: 300;
+}
+
+.onboarding-hero > p {
+  max-width: 470px;
+  color: rgba(255, 250, 240, .83);
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.onboarding-hero-note {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 54px;
+  color: #e4cfaa;
+  font-size: 9px;
+}
+
+.onboarding-note-line {
+  width: 42px;
+  height: 1px;
+  background: #d5b77c;
+}
+
+.onboarding-panel {
+  width: 100%;
+  padding: clamp(25px, 3.4vw, 43px);
+  background: #f8f5ed;
+  color: #1b3029;
+  border: 1px solid rgba(226, 208, 169, .8);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+}
+
+.onboarding-form-heading {
+  margin-bottom: 25px;
+}
+
+.onboarding-form-heading > span {
+  color: #967744;
+}
+
+.onboarding-form-heading h2 {
+  margin: 12px 0 6px;
+  color: #17372d;
+  font: 400 clamp(27px, 3vw, 35px)/1.2 'Fraunces', Georgia, serif;
+}
+
+.onboarding-form-heading p {
+  margin: 0;
+  color: #68766e;
+  font-size: 13px;
+}
+
+.onboarding-panel .selected-property-panel {
+  background: #17372d;
+}
+
+.onboarding-panel .form-card {
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.onboarding-panel .form-card legend,
+.onboarding-panel .form-card .field label {
+  color: #263d33;
+}
+
+.onboarding-panel .type-card {
+  background: #fffdf8;
+}
+
+.onboarding-panel .type-option input:checked + .type-card {
+  background: #f1eadb;
+  border-color: #a88951;
+}
+
+.onboarding-panel .field input,
+.onboarding-panel .field select {
+  background: #fffdf8;
+  border-color: #d9d3c5;
+}
+
+.onboarding-panel .primary {
+  background: #17372d;
+  color: #f8f4e9;
+}
+
+.onboarding-panel .primary:hover:not(:disabled) {
+  background: #285344;
+}
+
+.onboarding-panel .back-link {
+  color: #66766c;
+}
+
+.onboarding-panel .status {
+  color: #28634b;
+}
+
+@media (max-width: 900px) {
+  .onboarding-layout {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    max-width: 680px;
+    padding-top: 42px;
+    padding-bottom: 50px;
+  }
+
+  .onboarding-hero {
+    max-width: 620px;
+  }
+
+  .onboarding-hero h1 {
+    max-width: 550px;
+    font-size: clamp(42px, 8vw, 62px);
+  }
+
+  .onboarding-hero-note {
+    margin-top: 25px;
+  }
+}
+
+@media (max-width: 560px) {
+  body:has(.onboarding-layout) {
+    background-attachment: scroll;
+  }
+
+  .onboarding-nav {
+    min-height: 66px;
+    padding: 0 18px;
+  }
+
+  .onboarding-nav-right {
+    gap: 12px;
+    font-size: 8px;
+  }
+
+  .onboarding-nav-right a {
+    padding: 8px 10px;
+  }
+
+  .onboarding-layout {
+    padding: 32px 16px;
+  }
+
+  .onboarding-panel {
+    padding: 24px 19px;
+  }
+}
+/* END REALIQ ONBOARDING FULLSCREEN DESIGN */
+/* REALIQ CLEAN ONBOARDING BACKDROP */
+body:has(.onboarding-layout) {
+  background:
+    radial-gradient(ellipse at 18% 45%, rgba(91, 113, 77, .32), transparent 48%),
+    radial-gradient(ellipse at 85% 15%, rgba(166, 128, 69, .16), transparent 38%),
+    linear-gradient(125deg, #102c24 0%, #193b30 52%, #10271f 100%);
+  background-attachment: fixed;
+}
+
+.onboarding-layout {
+  min-height: calc(100vh - 76px);
+  align-items: center;
+}
+
+.onboarding-hero {
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-panel {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  justify-self: end;
+  border-radius: 8px;
+}
+
+.onboarding-panel .form-card {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .onboarding-panel {
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+/* END REALIQ CLEAN ONBOARDING BACKDROP */
+/* REALIQ ONBOARDING - ARCHITECTURAL PHOTO AND FORM REFINEMENT */
+body:has(.onboarding-layout) {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(10, 32, 25, .78) 0%, rgba(10, 32, 25, .58) 48%, rgba(10, 32, 25, .48) 100%),
+    url("/images/realiq-journey-05-terrace.jpg") center 52% / cover fixed;
+  color: #f8f4e9;
+}
+
+.onboarding-layout {
+  width: min(1380px, 100%);
+  min-height: calc(100vh - 76px);
+  margin: 0 auto;
+  padding: 48px clamp(22px, 5vw, 76px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(430px, 550px);
+  align-items: center;
+  gap: clamp(34px, 5vw, 76px);
+}
+
+.onboarding-hero {
+  max-width: 590px;
+}
+
+.onboarding-hero h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(46px, 5vw, 72px);
+  line-height: 1.08;
+  color: #fffaf0;
+}
+
+.onboarding-hero h1 em {
+  color: #e6c58b;
+}
+
+.onboarding-hero > p {
+  max-width: 480px;
+  color: rgba(255, 250, 240, .91);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.onboarding-panel {
+  width: 100%;
+  max-width: 550px;
+  justify-self: end;
+  padding: clamp(26px, 3vw, 38px);
+  background: #faf8f1;
+  color: #18352b;
+  border: 1px solid rgba(221, 205, 174, .9);
+  border-radius: 9px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
+}
+
+.onboarding-form-heading {
+  margin-bottom: 26px;
+}
+
+.onboarding-form-heading h2 {
+  color: #17372d;
+  font: 400 clamp(28px, 3vw, 36px)/1.2 'Fraunces', Georgia, serif;
+}
+
+.onboarding-form-heading p {
+  color: #68736c;
+}
+
+.onboarding-panel .form-card {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.onboarding-panel .form-card fieldset {
+  margin-bottom: 24px;
+}
+
+.onboarding-panel .form-card legend,
+.onboarding-panel .field label {
+  color: #263b32;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-bottom: 10px;
+}
+
+.onboarding-panel .type-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.onboarding-panel .type-card {
+  min-height: 145px;
+  padding: 19px;
+  background: #fffdf8;
+  border: 1px solid #d9d5cb;
+  border-radius: 6px;
+}
+
+.onboarding-panel .type-card strong {
+  color: #1b3029;
+  font-size: 14px;
+  margin: 12px 0 7px;
+}
+
+.onboarding-panel .type-card span {
+  color: #69736c;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.onboarding-panel .type-option input:checked + .type-card {
+  padding: 18px;
+  border: 2px solid #c39449;
+  background: #fbf6e9;
+}
+
+.onboarding-panel .fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.onboarding-panel .field.full {
+  grid-column: 1 / -1;
+}
+
+.onboarding-panel .field input,
+.onboarding-panel .field select {
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid #d9d5cb;
+  border-radius: 5px;
+  background: #fffdf9;
+  color: #24372f;
+  font: 13px 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+.onboarding-panel .field input:focus,
+.onboarding-panel .field select:focus {
+  outline: 2px solid rgba(195, 148, 73, .5);
+  border-color: #b58a4c;
+}
+
+.nri-details-section {
+  margin-top: 22px;
+  padding: 17px 16px 15px;
+  border: 1px solid #e1dbce;
+  border-radius: 7px;
+  background: #f8f5ed;
+}
+
+.nri-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 17px;
+}
+
+.nri-section-heading strong {
+  color: #263b32;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nri-required-badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: #eee3ca;
+  color: #70562d;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.onboarding-panel .nri-fields-grid {
+  gap: 14px;
+}
+
+.onboarding-panel .nri-fields-grid .help {
+  margin-top: 8px;
+  color: #68736c;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.onboarding-panel .form-actions {
+  padding-top: 20px;
+  margin-top: 22px;
+  border-top: 1px solid #ded8cb;
+}
+
+.onboarding-panel .back-link {
+  color: #385548;
+  font-size: 12px;
+}
+
+.onboarding-panel .primary {
+  min-height: 48px;
+  padding: 13px 20px;
+  background: #12372c;
+  color: #f5d08a;
+  border: 0;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.onboarding-panel .primary:hover:not(:disabled) {
+  background: #245341;
+}
+
+.onboarding-panel .selected-property-panel {
+  margin: 0 0 22px;
+  background: #17372d;
+}
+
+@media (max-width: 980px) {
+  .onboarding-layout {
+    grid-template-columns: 1fr;
+    max-width: 680px;
+    gap: 30px;
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+
+  .onboarding-hero {
+    max-width: 620px;
+  }
+
+  .onboarding-panel {
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 560px) {
+  body:has(.onboarding-layout) {
+    background-attachment: scroll;
+  }
+
+  .onboarding-layout {
+    padding: 30px 15px;
+  }
+
+  .onboarding-panel {
+    padding: 23px 18px;
+  }
+
+  .onboarding-panel .type-grid,
+  .onboarding-panel .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-panel .field.full {
+    grid-column: auto;
+  }
+
+  .onboarding-panel .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .onboarding-panel .primary {
+    width: 100%;
+  }
+}
+/* END REALIQ ONBOARDING - ARCHITECTURAL PHOTO AND FORM REFINEMENT */
+/* REALIQ BUYER DETAILS CARD FIX */
+.onboarding-panel,
+.onboarding-panel * {
+  box-sizing: border-box;
+}
+
+.onboarding-panel .form-card {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.onboarding-panel .type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+}
+
+.onboarding-panel .type-option {
+  display: block;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.onboarding-panel .type-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.onboarding-panel .type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 132px;
+  height: 100%;
+  padding: 15px 16px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  background: #fffdf8;
+  border: 1px solid #d9d5cb;
+  border-radius: 6px;
+  transition: border-color .18s, background .18s;
+}
+
+.onboarding-panel .type-card strong {
+  display: block;
+  margin: 9px 0 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.onboarding-panel .type-card > span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #69736c;
+}
+
+.onboarding-panel .type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  color: #b58a4c;
+}
+
+.onboarding-panel .type-icon svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.onboarding-panel .type-option input:checked + .type-icon + .type-card {
+  border: 2px solid #c39449;
+  padding: 14px 15px;
+  background: #fbf6e9;
+}
+
+.onboarding-panel .type-option input:focus-visible + .type-icon + .type-card {
+  outline: 2px solid #b58a4c;
+  outline-offset: 3px;
+}
+
+.onboarding-panel .fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px 20px;
+  width: 100%;
+}
+
+.onboarding-panel .field {
+  min-width: 0;
+}
+
+.onboarding-panel .field.full {
+  grid-column: 1 / -1;
+}
+
+.onboarding-panel .nri-details-section {
+  width: 100%;
+  min-width: 0;
+}
+
+.onboarding-panel .nri-fields-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.onboarding-panel .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .onboarding-panel .type-grid,
+  .onboarding-panel .fields,
+  .onboarding-panel .nri-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-panel .type-card {
+    min-height: 112px;
+  }
+
+  .onboarding-panel .field.full {
+    grid-column: auto;
+  }
+}
+/* END REALIQ BUYER DETAILS CARD FIX */
